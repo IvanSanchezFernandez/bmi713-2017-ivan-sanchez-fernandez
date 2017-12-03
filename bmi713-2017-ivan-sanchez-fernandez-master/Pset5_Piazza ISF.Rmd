@@ -1,0 +1,580 @@
+---
+title: "BMI713 Problem Set 5"
+output:
+  html_document: default
+  pdf_document: default
+header-includes: \usepackage{amsmath}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE , eval = TRUE)
+```
+
+
+
+
+#### Instructions:
+
+Please submit this problem set before class on Tuesday, December 5. Problem sets may be submitted within a week past the due date at a 20% penalty; each person is allowed to submit one problem late (within a week) without penalty. Please comment your code indicating what your functions do and any relevant passage (not necessarily every line of code), because it is part of the requirements of each exercise. Missing comments will not allow the full score. Please tag your problem set as "bmi713_pset5" on git.
+
+If you have any questions, please post on the piazza site. This problem set was prepared by Tiziana Sanavia and Giorgio Melloni, so they will be most prepared to answer questions.
+
+
+
+
+SIGNIFICANCE IS CONSIDERED WITH AN ALPHA OF 0.05 
+
+## 1. Multiple Regression models (30 points)
+
+**1.1** In this question we consider the meaning of the p-values of a linear regression. For this, we use the data set `punting`. A description of this data set can be found at http://www.statsci.org/data/general/punting.html. The data can be imported directly by:
+```{r , echo=TRUE, eval=FALSE}
+read.table("http://www.statsci.org/data/general/punting.txt", header = TRUE)
+```
+
+
+
+
+* Perform a multiple regression of `Distance` on `R_Strength` and `L_Strength`. Compare the p-values for the coefficients and the p-value for the global F-test. (5 points)
+```{r}
+# Load the database with the name punting and check that it looks as expected
+punting <- read.table("http://www.statsci.org/data/general/punting.txt", header = TRUE)
+punting[1:5, ]
+
+# Multiple linear regression with Distance as the outcome and R_Strength and L_Strength as the predictors
+puntingmodel1 <- lm(Distance ~ R_Strength + L_Strength, data = punting) 
+summary(puntingmodel1)
+
+# The coefficient for the intercept is 12.8490 and the p-value for the intercept is 0.705. This p-value shows that the intercept is not statistically significantly different than 0. This is rarely of interest. In this case the intercept is the distance that the ball would have travelled for a punter with 0 strength in the right leg and 0 strength in the left leg; in this case it is a extrapolation of the regression line to the value of 0 strength in both legs and is of no interest. 
+
+# The coefficient for R_strength is 0.7208 and the p-value for R_Strength is 0.173. This p-value shows that R_Strength is not statistically significantly different than 0 controlling for (within levels of) L-Strength. 
+
+# The coefficient for L_Strength is 0.2011 and the p-value for L_Strength is 0.689. This p-value shows that L_Strength is not statistically significantly different than 0 controlling for (within levels of) R_Strength. 
+
+# The global F-test statistic is 8.611 with 10 degrees of freedom for a p-value of 0.00669. This p-value shows that the global model predicts better than the null model (average of Distance). This occurs even if none of their individual components (R_Strength and L_Strength) is statistically significant in this model.  
+```
+
+
+
+
+* Perform now a simple linear regression of `Distance` on `R_Strength` and one of `Distance` on `L_Strength`. What are the p-values of the coefficients? (5 points)
+```{r}
+# Simple linear regression with Distance as the outcome and R_Strength as the predictor
+puntingmodel2 <- lm(Distance ~ R_Strength, data = punting) 
+summary(puntingmodel2)
+
+# In the simple linear regression with Distance as the outcome and R_Strength as the predictor the coefficient for the intercept is 15.009 and the p-value for the intercept is 0.64159. This p-value shows that the intercept is not statistically significantly different than 0. This is rarely of interest. In this case the intercept is the distance that the ball would have travelled for a punter with 0 strength in the right leg; in this case it is a extrapolation of the regression line to the value of 0 and is of no interest. 
+
+# In the simple linear regression with Distance as the outcome and R_Strength as the predictor the coefficient for R_Strength is 0.902 and the p-value for R_Strength is 0.00127. This p-value shows that R_Strength is statistically significantly different than 0 in this model.
+
+
+# Simple linear regression with Distance as the outcome and L_Strength as the predictor
+puntingmodel3 <- lm(Distance ~ L_Strength, data = punting) 
+summary(puntingmodel3)
+
+# In the simple linear regression with Distance as the outcome and L_Strength as the predictor the coefficient for the intercept is 27.0013 and the p-value for the intercept is 0.43340. This p-value shows that the intercept is not statistically significantly different than 0. This is rarely of interest. In this case the intercept is the distance that the ball would have travelled for a punter with 0 strength in the left leg; in this case it is a extrapolation of the regression line to the value of 0 and is of no interest. 
+
+# In the simple linear regression with Distance as the outcome and L_Strength as the predictor the coefficient for L_Strength is 0.8428 and the p-value for L_Strength is 0.00354. This p-value shows that L_Strength is statistically significantly different than 0 in this model. 
+```
+
+
+
+
+* Compare the p-values for the coefficients from the multiple regression model and those obtained from the simple linear regression. Are they significant in both cases? If not, explain why this happens. (5 points)
+```{r}
+# In the multiple regression model the p-value for R_Strength is 0.173 and it shows that R_Strength is not statistically significantly different than 0. In the simple linear regression with Distance as the outcome and R_Strength as the predictor the p-value for R_Strength is 0.00127 and it shows that R_Strength is statistically significantly different than 0. 
+
+# In the multiple regression model the p-value for L_Strength is 0.689 and it shows that L_Strength is not statistically significantly different than 0. In the simple linear regression with Distance as the outcome and L_Strength as the predictor the p-value for L_Strength is 0.00354 and it shows that L_Strength is statistically significantly different than 0.  
+
+# The reason why they are not significant in the multiple regression and significant in the simple regression is because the models and the coefficients within the models represent different aspects. In the multiple regression each coefficient p-value evaluates whether they are statistically significantly different than 0 controlling for (within the levels of) the other variable. In the simple linear regression they are testing whether they are significant on their own. The variables R_Strength and L_Strength are probably collinear (vary similarly, as expected from measures of right leg strength and left leg strength) and therefore they are measuring more or less the same quantity. In consequence, within the same level of R_Strength there is not much variability of L_Strength and viceversa and therefore they are not statistically significantly different than 0. Collinearity makes them individually not significant in the multiple regression becausing they are both measuring more or less the same concept. However, the F test for the multiple linear regression shows that the model is overall statistically significantly better than the null model (average of Distance).
+```
+
+
+
+
+**1.2** The dataset `whiteside` is a collection of temperature and gas consumption of a UK house in the 60's. Temperatures and gas consumptions are recorded for two seasons, before and after a cavity-wall insulation was installed:
+
+- `Insul` is a factor (Before and After insulation)
+- `Temp` is a set of temperature in Celsius degrees
+- `Gas` is gas consumption in cubic feet
+
+The data set is available in the R package `MASS`:
+```{r, echo=TRUE, eval=TRUE}
+# install.packages("MASS")
+library(MASS)
+help("whiteside")
+head(whiteside)
+```
+
+
+
+
+* Create a linear regression model considering the gas consumption depending on both insulation and temperature. Can these two variables explain the gas consumption? Interpret the coefficients obtained and their significance (one is a dummy variable the other is continuous!). Comment the results. (5 points)
+```{r}
+# Simple linear regression with Gas as the outcome and Insul and Temp as the predictors
+gasmodel <- lm(Gas ~ Insul + Temp, data = whiteside) 
+summary(gasmodel)
+
+# The coefficient for the intercept is 6.55133 and the p-value for the intercept is <2e-16 and it shows that the intercept is statistically significantly different than 0. This is rarely of interest. In this case it represents the gas consumption for a house with no insulation at 0 degrees. In this case it is of some interest.
+
+# The p-value for Insul is <2e-16 and it shows that Insul is statistically significant. The coefficient for insulation is -1.56520 and it means that after insulation (specified in the model as InsulAfter, so Before is "0" and After is "1") the gas consumption is 1.56520 units lower than before insulation after controlling for Temp (within each level of Temp).
+
+# The p-value for Temp is <2e-16 and it shows that Temp is statistically significant. The coefficient is -0.33670 and it means that for each unit increase in Temp (each increase in one degree centigrade) the gas consumption decreases by 0.33670 units after controlling for Insul (within each level of Insul). 
+
+# The global F-test statistic is 267.1 with 53 degrees of freedom for a p-value < 2.2e-16 and this shows that the global model predicts better than the null model (average gas consumption). 
+```
+
+
+
+
+* Display a scatter plot of temperature and gas with dots colored by insulation values. Add 2 regression lines for before and after insulation installation. (5 points)
+```{r}
+# Regression with Gas as the outcome, Temp as the predictor with only Before insulation
+gasmodel2 <- lm(Gas ~ Temp, data = whiteside[whiteside$Insul == "Before", ]) 
+summary(gasmodel2)
+
+# Regression with Gas as the outcome, Temp as the predictor with only After insulation
+gasmodel3 <- lm(Gas ~ Temp, data = whiteside[whiteside$Insul == "After", ]) 
+summary(gasmodel3)
+
+# Plot
+plot(whiteside$Temp, whiteside$Gas, col = as.integer(whiteside$Insul))
+abline(gasmodel2$coefficients[1], gasmodel2$coefficients[2])
+abline(gasmodel3$coefficients[1], gasmodel3$coefficients[2], col = "red")
+```
+
+
+
+
+* Create an interaction model to check whether there is a combined effect of insulation and temperature and comment the results obtained. (5 points)
+```{r}
+# Create the interaction variable Insul * Temp. As Insul is a character I have to transform it to numeric
+whiteside$inter <- as.numeric(whiteside$Insul) * whiteside$Temp 
+
+# Regression with Gas as the outcome, Temp, and inter as the predictors
+gasmodelinteraction <- lm(Gas ~ Insul + Temp + inter, data = whiteside) 
+summary(gasmodelinteraction)
+
+# The coefficient for inter is 0.11530 and the p-value is 0.000731. This p-value shows that the interaction is statistically significant (its coefficient is statistically significantly different than 0) and there is an interaction (or combined effect) between Insul and Temp. This could be suspected from the plot as the lines do not have the same slope
+```
+
+
+
+
+
+
+
+
+## 2. Survival Analysis (10 points) 
+
+In the effort to determine whether two drugs used in treatment of thyroid disorders differed in terms of increasing the risk of cancer, researchers at Cambridge performed a study in which rats were randomly assigned to receive one of the drugs. The rats were then exposed to a known carcinogen, and the time until each rat died of cancer was recorded. The first few outcomes for one of the groups of rats is given below. There were 21 rats in this group.
+```{r , echo = FALSE, eval = TRUE}
+Day <- c(142,156,163,198,204,205,"...")
+Numb_Deaths <- c(1,1,1,1,0,1,"...")
+Live_at_that_day <- c("", "", "", "", "", "", "")
+knitr::kable( cbind(Day, Numb_Deaths, Live_at_that_day))
+```
+
+
+
+
+* Complete the third column of the table, reporting the number $n(t)$ of rats alive at the beginning of the day. At the start of day 205, how many rats were at risk for dying of cancer? (3 points)
+```{r}
+# The rats that were not dead were alive at the last day of observation. Therefore, Live_at_that_day is just the opposite of Numb_Deaths
+Day <- c(142,156,163,198,204,205,"...")
+Numb_Deaths <- c(1,1,1,1,0,1,"...")
+Live_at_that_day <- c(0, 0, 0, 0, 1, 0,"...")
+knitr::kable( cbind(Day, Numb_Deaths, Live_at_that_day))
+
+# Therefore, at the start of day 205 all rats in the limited portion of the table were dead except for the second to last rat that we know was alive at day 204 but was lost to follow up on day 204 and was therefore "not at risk" of dying of cancer on day 205 (the rat was at risk but was lost to follow-up on day 204) and the last rat that died on day 205, so was alive at the beginning of day 205. So, at the beginning of day 205 there was 1 rat at risk of dying of cancer in the limited portion of the table we are provided with. Assuming that the table is ordered by day of the event (day of death or day of lost to follow-up) as the table appears to be, and there are other 15 rats we are not seeing on day 205 there were 1 + 15 rats (16 rats) at risk of dying of cancer.
+```
+
+
+
+
+* What was the observed probability of dying from cancer at day 205? (3 points)
+```{r}
+# At the beginning of day 205 there were 16 rats at risk of dying of cancer. There was a rat that died on day 205. Therefore, the observed probability of dying from cancer at day 205 was 1/16 = 0.0625 (6.25%). This is based on the observed part of the table and on the assumption that the next row has the day of the next event (death or loss to follow-up) which is higher than day 205. 
+```
+
+
+
+
+* Estimate the observed probability of surviving until day 160. (4 points)
+```{r}
+# At day 0 all 21 rats were alive, so 
+# S(0) = 21 / 21
+# S(0) is 1
+
+# At day 142 one rat died among the 21 which were at risk at the beginning of that day, so 
+# S(142) = (20 / 21) * S(0) = 0.952381 * 1 = 0.952381
+# S(142) is 0.952381
+
+# At day 156 one rat died among the 2019/20 which were at risk at the beginning of that day, so 
+# S(156) = (19 / 20) * S(142) = 0.952381 * 0.952381 = 0.9047619
+# S(156) is 0.9047619
+
+# As there are no more deaths until day 160, then the estimated probability of surviving until day 160 is 0.9047619
+
+# Which can also be calculated as 2 rats death up to day 160 of the 21 that were at risk at the beginning of the study and no censoring up to that point. So 19 rats alive of the 21 that were at risk at the beginning of the study, so 19/21 = 0.9047619
+```
+
+
+
+
+
+
+
+
+## 3. Kaplan-Meier Survival Curves and the Log-Rank Test (20 points)
+
+The data set “vets.csv” considers survival times in days for 137 patients from the Veterans Administration Lung Cancer Trial cited by Kalbfleisch and Prentice in their text (The Statistical Analysis of Survival Time Data, John Wiley, pp. 223-224, 1980):
+
+- Column 1 = `treatment` (1 = standard, 2 = test)
+- Column 2 = `cell type 1` (1 = large, 0 = other)
+- Column 3 = `cell type 2` (1 = adeno, 0 = other)
+- Column 4 = `cell type 3` (1 = small, 0 = other)
+- Column 5 = `cell type 4` (1 = squamous, 0 = other)
+- Column 6 = `survival time` (days)
+- Column 7 = `performance status` (0 = worst, ..., 100 = best)
+- Column 8 = `disease duration` (months)
+- Column 9 = `age` (years)
+- Column 10 = `prior therapy` (0 = none, 10 = some)
+- Column 11 = `status` (0 = censored, 1 = died)
+
+The data set can be dowloaded at the link
+
+https://www.dropbox.com/sh/rlj714terrzakc7/AACELk752w4GPAsJXYi8Vbb5a?dl=0 
+
+and then loaded in R using the command:
+```{r}
+# Load the database and check that it looks as expected
+data <- read.csv("D:\\BMI713 Computational Statistics for Biomedical Sciences\\Homework5\\vets.csv")
+data[1 : 5, ]
+```
+
+* Obtain Kaplan-Meier plots for the two categories of the variable `cell type 1` (1 = large, 0 = other). Comment on how the two curves compare with each other. Moreover, carry out the log-rank test and draw conclusions from the test. NOTE: use function `survdiff` to perform the log-rank test. (10 points)
+```{r}
+# install.packages("survival")
+library(survival)
+
+# Model and plot 
+modelvets <- survfit(Surv(V6, V11) ~ V2, data = data)
+plot(modelvets, col = c("red", "black"))
+legend("topright", c("large", "other"), lty = 1, col = c("black", "red"))
+
+# Based on the Kaplan-Meier curves the survival for cell type 1 "large" is longer than the survival for cell type 1 "other"
+
+# Log-rank test
+logrank <- survdiff(Surv(V6, V11) ~ V2, data = data)
+logrank
+# The difference is not statistically significant with a p-value of 0.0822. Therefore, the difference in survival between "large" and non-large tumors is not statistically significant.
+```
+
+
+
+
+* Obtain Kaplan-Meier plots for the four categories of cell type-large, adeno, small, and squamous. Note that you will need to recode the data to define a single variable which numerically distinguishes the four categories (e.g., 1 = large, 2 = adeno, etc.). As in the previous part, compare the four Kaplan-Meier curves. Also, carry out the log-rank for the equality of the four curves and draw conclusions.  NOTE: use function `survdiff` to perform the log-rank test. (10 points)
+```{r}
+# Recode the database by creating a variable with the subtype and check that it looks as expected
+data$type[data$V2 == 1] <- "large" 
+data$type[data$V3 == 1] <- "adeno"
+data$type[data$V4 == 1] <- "small"
+data$type[data$V5 == 1] <- "squamous"
+data[1 : 10, ]
+
+# Model and plot 
+modelvets2 <- survfit(Surv(V6, V11) ~ type, data = data)
+plot(modelvets2, col = c("red", "black", "blue", "green"), lty = c(2, 1, 3, 4))
+legend("topright", c("large", "adeno", "small", "squamous"), lty = 1 : 4, col = c("black", "red", "blue", "green"))
+
+# Based on the Kaplan-Meier curves the survival for "large" and "squamous" appear longer than the survival for "adeno" and "small"
+
+# Log-rank test
+logrank2 <- survdiff(Surv(V6, V11) ~ type, data = data)
+logrank2
+# The difference is statistically significant with a p-value of 1.27e-05. Therefore, at least one type of tumor has a difference that is statistically significant from other
+```
+
+
+
+
+## 4. Cox models (40 points)
+
+For the whole exercise we are investigating a dataset from a study by Copelan et al. (1991) of allogeneic marrow transplants for patients with acute myelocytic leukemia (AML) and acute lymphoblastic leukemia (ALL). A total of 137 patients (99 AML, 38 ALL) were treated at four different hospitals: 76 at the Ohio State University Hospital, 21 at Hahnemann University, 23 at St. Vincent’s Hospital and 17 at Alfred Hospital. The data set is available in the R package `KMsurv`:
+
+```{r}
+# install.packages("KMsurv")
+library(KMsurv)
+data(bmt)
+help(bmt)
+bmt$group <- as.factor(bmt$group)
+
+# Check that the database looks as expected
+bmt[1 : 5, ]
+```
+
+The last line is necessary for R since `group` has three levels. 
+NOTE: Since `group` has three levels, the first level is treated as the base level and all remaining levels are compared with the base level. Therefore when it is tested in a model, there are two p-values provided for `group`. If one level of a categorical variable is significant then the full variable is deemed significant.
+
+* Investigate the disease-free survival time using the Kaplan-Meier estimate for the survival curves. Plot the curves and comment briefly on what you see. What is the three year disease-free survival of the three patient types? 
+HINT: The variables for the `Surv` function are $t2$ and $d3$ since we are interested in the disease free survival. (5 points)
+```{r}
+# Create the model for bmt 
+modelbmt <- survfit(Surv(t2, d3) ~ group, data = bmt)
+plot(modelbmt, lty = c(2, 1, 3))
+legend("topright", c("ALL", "AML Low Risk", "AML High Risk"), lty = c(2, 1, 3))
+
+# Based on the Kaplan-Meier curves it appears that AML Low Risk has a better survival profile than ALL and the worst survival profile is for AML High Risk 
+
+
+# Three years in days is approximately (counting years as exactly 365 days)
+365 * 3 
+# 1095 days
+
+# Summary of the model
+summary(modelbmt)
+
+# Based on the data on the summary, the survival is
+# 0.353 for group 1 (ALL)
+# 0.547 for group 2 (AML Low Risk)
+# 0.244 for group 3 (AML High Risk)
+# Which are the values that correspond approximately with those in the graph
+```
+
+
+
+
+* Check whether these three curves are really different using the log-rank test. Comment the results. NOTE: use function `survdiff` to perform the log-rank test. (5 points)
+```{r}
+# Log-rank test
+logrankbmt <- survdiff(Surv(t2, d3) ~ group, data = bmt)
+logrankbmt
+# The difference is statistically significant with a p-value of 0.00101. Therefore, at least one type of tumor has a survival that is statistically significantly different from other
+```
+
+
+
+
+* We want to extend the basic comparisons of the three patient groups using a Cox PH model for time-independent covariates. Generate the Cox model using `group` as independent variable. Does the group 'AML Low Risk' (i.e. `group` = 2) reduce the hazard? If yes, by how much (report as a percentage)? (6 points)
+```{r}
+# Cox proportional hazard model
+coxmodelbmt <- coxph(Surv(t2, d3) ~ group, data = bmt)
+coxmodelbmt
+summary(coxmodelbmt)
+# The coefficient for group 2 (AML Low Risk) is -0.574, and that is the ln(hazardgroup2 / hazardgroup1) which means that compared to the reference group (group 1, ALL) the hazard ratio is exp(-0.574) = 0.5632679 relative to the hazard of group 1. In percentage being in group 2 reduces the hazard by a factor of 0.5632679, or 43.67% (compared with the hazard of group 1). This difference is statistically significant because the p-value is 0.0457
+```
+
+
+
+
+* Test the model by adding confounding factors, using the following approach:
+```{r}
+# mod_var1 <- coxph(Surv(t2, d3) ~ group + var1, data = bmt)
+# summary(mod_var1)
+```
+
+Select the covariates according to their corresponding Wald test, testing each of the following covariates individually:
+
+- var1 = z7 (waiting time to transplant)
+- var1 = z8 (FAB class)
+- var1 = z10 (MTX)
+- var1 = z1 and z2 (patient and donor age)
+- var1 = z3 and z4 (patient and donor gender)
+- var1 = z5 and z6 (patient and donor CMV status)
+
+For the variables age (z1, z2), gender (z3, z4) and CMV status (z5, z6) we want to use also the interaction term between donor and patient (HINT: use the $*$ symbol in the model, e.g. $~group + z1*z2$ is equivalent to $~group + z1 + z2 + z1:z2$).(5 points)
+```{r}
+# We test each variable independently
+
+# Waiting time to transplant
+mod_var1 <- coxph(Surv(t2, d3) ~ group + z7, data = bmt)
+summary(mod_var1)
+# The p-value for z7 is 0.2780, not statistically significant
+
+# FAB class
+mod_var2 <- coxph(Surv(t2, d3) ~ group + z8, data = bmt)
+summary(mod_var2)
+# The p-value for z8 is 0.00442, statistically significant
+
+# MTX
+mod_var3 <- coxph(Surv(t2, d3) ~ group + z10, data = bmt)
+summary(mod_var3)
+# The p-value for z10 is 0.1547, not statistically significant
+
+# Patient and donor age
+mod_var4 <- coxph(Surv(t2, d3) ~ group + z1 * z2, data = bmt)
+summary(mod_var4)
+# The p-value for z1 is 0.010752, for z2 is 0.006711, and for their interaction it is 0.000819, all three statistically significant
+
+# Patient and donor gender
+mod_var5 <- coxph(Surv(t2, d3) ~ group + z3 * z4, data = bmt)
+summary(mod_var5)
+# The p-value for z3 is 0.7379, for z4 is 0.5757, and for their interaction it is 0.5893, all three not statistically significant
+
+# Patient and donor CMV status
+mod_var6 <- coxph(Surv(t2, d3) ~ group + z5 * z6, data = bmt)
+summary(mod_var6)
+# The p-value for z5 is 0.6844, for z6 is 0.9718, and for their interaction it is 0.8021, all three not statistically significant
+```
+
+
+
+
+* Look at the results and then consider the model with the linear combination of `group` and all the resulting significant covariates. Considering this latter model then try to: 
+```{r}
+# Model with all significant covariates
+mod_var <- coxph(Surv(t2, d3) ~ group + z8 + z1 * z2, data = bmt)
+summary(mod_var)
+```
+
+
+
+
+(a) replace one of the significant covariate with each of the not-significant covariate at a time and look at the performance of the model (Wald test). Example: if z7 and $z3*z4$ are the only significant covariates, try to replace $z3*z4$ first with z8 and check the results of the model, then with $z1*z2$.... (5 points)
+```{r}
+# Model substituting z8 for a non-significant covariate at a time
+mod_varz7 <- coxph(Surv(t2, d3) ~ group + z7 + z1 * z2, data = bmt)
+summary(mod_varz7)
+
+mod_varz10 <- coxph(Surv(t2, d3) ~ group + z10 + z1 * z2, data = bmt)
+summary(mod_varz10)
+
+mod_varz3z4 <- coxph(Surv(t2, d3) ~ group + z3 * z4 + z1 * z2, data = bmt)
+summary(mod_varz3z4)
+
+mod_varz5z6 <- coxph(Surv(t2, d3) ~ group + z5 * z6 + z1 * z2, data = bmt)
+summary(mod_varz5z6)
+
+# In the tested models the p-value for the Wald test in the whole model is slightly higher when non-significant variables substitute significant variables than in the original model with only the significant variables
+```
+
+
+
+
+(b) keep all the significant covariates and add each of the not-significant covariate at a time and look at the performance of the model (Wald test). Example: if z7 and $z3*z4$ are the only significant covariates, try to use z7, z8 and $z3*z4$ and check the results of the model, then try z7, $z3*z4$ and $z1*z2$... (5 points)
+```{r}
+# Add not significant covariates one at a time
+mod_varaddz7 <- coxph(Surv(t2, d3) ~ group + z8 + z1 * z2 + z7, data = bmt)
+summary(mod_varaddz7)
+
+mod_varaddz10 <- coxph(Surv(t2, d3) ~ group + z8 + z1 * z2 + z10, data = bmt)
+summary(mod_varaddz10)
+
+mod_varaddz3z4 <- coxph(Surv(t2, d3) ~ group + z8 + z1 * z2 + z3 * z4, data = bmt)
+summary(mod_varaddz3z4)
+
+mod_varaddz5z6 <- coxph(Surv(t2, d3) ~ group + z8 + z1 * z2 + z5 * z6, data = bmt)
+summary(mod_varaddz5z6)
+
+# In the tested models no Wald test p-value is lower than that of the model with only significant variables
+```
+
+
+
+
+Are there combinations tested in (a) and (b) better than the model that combines only the covariates which resulted significant when they were individually used in the original model with `group`? (3 points)
+```{r}
+# Of the tested models, no Wald test p-value in a) or b) is lower than that of the model with only significant variables
+```
+
+
+
+
+* Use stepwise selection (in both directions, i.e. backward and forward) using the function `step` which uses the AIC (Akaike information criterion) and compare the result with the best model previously obtained. Look at the final model obtained from the stepwise selection: which covariate shows the strongest association with poor survival? (Provide a proper explanation to your choice) (6 points)
+```{r}
+# The question can be interpreted as use forward and then backwards or as use forward and backwards
+
+# Stepwise forward selection
+forward <- step(coxph(Surv(t2, d3) ~ 1, data = bmt), scope = list(lower = ~ 1, 
+                                                       upper = ~ group + z7 + z8 + z10 +
+                                                         z1 * z2 + z3 * z4 + z5 * z6),
+     direction = "forward")
+summary(forward)
+
+# The p-value for the Wald test in the forward selection is 0.0001066, still worse than the best model developed previously
+
+
+# Stepwise backward elimination
+backward <- step(coxph(Surv(t2, d3) ~ group + z7 + z8 + z10 + z1 * z2 + z3 * z4 + z5 * z6, data = bmt), 
+                 scope = list(lower = ~ 1,
+                              upper = ~ group + z7 + z8 + z10 + z1 * z2 + z3 * z4 + z5 * z6),
+     direction = "backward")
+summary(backward)
+
+# The p-value for the Wald test in the backward elimination is 1.039e-05, which is the same as the best model developed previously
+
+
+# Stepwise both backward elimination and forward selection
+both <- step(coxph(Surv(t2, d3) ~ group + z7 + z8 + z10 + z1 * z2 + z3 * z4 + z5 * z6, data = bmt), 
+                 scope = list(lower = ~ 1,
+                              upper = ~ group + z7 + z8 + z10 + z1 * z2 + z3 * z4 + z5 * z6),
+     direction = "both")
+summary(both)
+# The p-value for the Wald test in the backward elimination and forward selection is 1.039e-05, which is the same as the best model developed previously
+
+
+# The variable most associated with poor outcome is group 2 (AML low risk) after controlling for other factors with a coefficient of -1.0906476 and a p-value of 0.002080. This is based on the size of the coefficient if it is statistically significantly different than 0. Alternatively it can be considered to be the interaction of age of donor and receptor z1 : z2 with a coefficient of 0.0031593 and a p-value of 0.000891 per year. This is based on the statistical significance.
+```
+
+
+
+
+
+
+
+
+## 5. Extra: Multiple testing (5 points)
+
+Create an R function which receives as input the p-values and provides as output the highest p-value with a corresponding Benjamini-Hochberg FDR < 0.05. 
+Do not use or copy the implementation provided by the `p.adjust` function. HINT: the usage of `while` can be useful.
+```{r}
+# Create the function
+myBH <- function(pvalues) {
+  ## INPUT:
+  # pvalues: vector of p-values to be evaluated
+  ## OUTPUT:
+  # Highest p-value with a corresponding Benjamini-Hochberg FDR < 0.05
+  
+  # Order the pvalues in ascending order
+  orderedpvalues <- sort(pvalues)
+  
+  # Calculate the ranks (k)
+  k <- seq(from = 1, to = length(orderedpvalues), by = 1)
+  
+  # Length of the database
+  m <- length(orderedpvalues)
+  
+  # Put this information into a database
+  database <- data.frame(k, orderedpvalues)
+  
+  # False discovery rate is 0.05 as described in the problem
+  q <- 0.05
+  
+  # Calculate (k / m) * q
+  database$kmq <- (database$k / m) * q
+  
+  # See whether to reject or not
+  database$reject <- ifelse(database$orderedpvalues <= database$kmq, "yes", "no")
+  
+  # Select the first p-value that is not rejected
+  finalpvalue <- NA
+  for (i in seq(from = 1, to = m, by = 1)) {
+    if (database$reject[i] == "yes") {
+      # Irrelevant value
+      x <- 1
+    } else {
+      # Collect the final p-value that will be the output of the function
+      finalpvalue <- database$orderedpvalues[i - 1]
+      break
+    }
+  }
+  return(finalpvalue)
+}
+
+
+# For example, for this vector of p-values, we can apply the function
+a <- c(0.090, 0.002, 0.300, 0.004, 0.300, 0.001, 0.5, 0.9, 0.009, 0.07, 0.4, 0.04, 0.03)
+
+myBH(a)
+```
+
