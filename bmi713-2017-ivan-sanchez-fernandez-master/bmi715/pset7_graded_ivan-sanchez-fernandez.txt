@@ -1,0 +1,898 @@
+1 10/10
+2 30/30
+3 30/30
+4 34/35
+
+
+Homework 7
+----------
+----------
+Ivan Sanchez Fernandez
+
+
+
+
+Problem 1
+---------
+
+Download the following data from https://www.dropbox.com/sh/p1ptxflh23i6pm8/AABJ-iWX4qq6n7-MEScMpBYda?
+dl=0&lst=:
+. PRAD_data_shuffled_noisy_PSET7.txt - Gene Expression data from patients with prostate cancer
+adenocarcinoma (TCGA dataset). Normalized RNAseq counts on 84 matched tumor-normal samples
+and 29,741 genes. Each row reports the expression levels of each gene across the samples. The data
+are already log2-transformed after adding an offset of 1.
+. PRAD_sample_info_PSET7.txt - Labels associated to the samples ("Primary Tumor" and "Solid Normal
+Tissue"). __ Note that sample names are not reported in the same order as the column names in the
+expression data file PRAD_data_shuffled_noisy_PSET7.txt.
+. RES_DESeq2_PRAD.txt - List of genes differentially expressed in Primary Tumors with respect to Solid
+Normal Tissue.
+Load the data in your workspace. Before training your classifier, it's important to prepare your data. As a
+part of your data preparation, you might need to normalize your data so that it is consistent, as seen for the
+clustering. When you normalize, you actually adjust the range of all features (i.e. genes), so that distances
+between variables with larger ranges will not be over-emphasized.
+1. Normalize the expression values for each gene by subtracting the minimum value for that gene and by
+dividing by the difference between the maximum and minimum value for that gene.
+```{r}
+#Load data and check that it looks more or less as expected
+genedata <- read.table("F:\\BMI715 Computing Skills for Biomedical Sciences\\Homework7\\PRAD_data_shuffled_noisy_PSET7.txt", header = TRUE, sep = "\t")
+genedata[1:10, 1:5]
+
+genesample <- read.table("F:\\BMI715 Computing Skills for Biomedical Sciences\\Homework7\\PRAD_sample_info_PSET7.txt", header = TRUE, sep = "\t")
+genesample[1:10, 1:2]
+
+genediff <- read.table("F:\\BMI715 Computing Skills for Biomedical Sciences\\Homework7\\RES_DESeq2_PRAD.txt", header = TRUE, sep = "\t")
+genediff[1:10, 1:5]
+
+#Normalize the expression values and check that the dataframe looks reasonable
+#Explanation of the single line equation below: for each element in the column (in the transposed matrix the genes are in the columns), I subtract the minimun and divide that by the difference between the maximum and the minimum
+normalizedgenedata <- t(apply(t(genedata), 2, function(x) (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))))
+normalizedgenedata[1:10, 1:5]
+```
+
+
+
+
+Then, in order to assess your model's performance later, you will need to divide the data set into two parts:
+a training set and a test set. The first is used to train the classifiers, while the second is used to evaluate
+the classifier. In practice, the division of your data set into a test and a training sets is disjoint: the most
+common splitting choice is to take 2/3 of your original data set as the training set, while the 1/3 that remains
+will compose the test set. In addition, you need to make sure that the two classes of samples are present in
+the training model and the number of samples belonging to the two classes is balanced in order to not favour
+one or the other class in your predictions.
+2. Write a function named TRind that splits the input data into training and test sets across samples,
+considering the number of samples for the test set provided as input. If possible, the training and test
+sets should have an equal number of samples from each class (i.e. Primary Tumor and Solid Tissue
+Normal). In defining the training and test set, use the function sample to randomly pick the samples
+from each class, in order to have different partitions if you run the function multiple times.
+The TRind function should have 2 input arguments:
+. A vector y indicating the labels of the two classes of samples (note that the labels provided as input
+have to be ordered according to the column names of the data in the data matrix that you will use for
+classification)
+. The percentage p of samples that will be used for the training set. Use the round function to convert
+the given percentage of samples into an integer.
+. An integer seed with a default value of 0 to initialize the random number generator before it is used in
+the function, e.g. in sampling indices.
+As output, the function provides a vector of indices into the input vector y that will make up the training set.
+In order to better understand the type of output to provide, use as reference the function createDataPartition
+from package caret but do not use createDataPartition as part of your TRind function.
+Note that in order to receive full credit, the function must be generic so that it can be applied
+also to labels different from our data. Assume that the labels are provided for a binary
+classification, that means you can assume exactly two classes.
+```{r}
+#Create function TRind
+TRind <- function(y, p, seednumber = 0) {
+  
+  #INPUTS:
+  # y (vector): indicating the labels of the two classes
+  # p (numeric): proportion of samples used in the training set
+  # seed (integer): initialize random number generator (default is 0)
+  
+  #OUTPUT:
+  # classifiertraintest (vector): indicating the clusters of the two classes
+  
+  ## FUNCTION
+  
+  ## Round the proportion
+  p = round(p, digits = 2)
+  
+  ## Transform the vector into a dataframe so that each row has an index
+  ydf <- data.frame(y)
+  ydf$index <- as.numeric(as.character(rownames(ydf)))
+  
+  ## As the database has 2 categories, and we want to ensure that the categories are similarly distributed in training and testing sets, we sample separately each category
+  
+  ## For category 1
+
+  # Identify the indexes associated with category 1
+  indexescategory1 <- ydf[ydf$y == levels(ydf$y)[1], ][ , "index"]
+    
+  # Set the seed to the seed specified above for reproducibility
+  set.seed(seednumber)
+  
+  # Sample only from the first category and assign the elements belonging to the train set
+  assignedtotraincategory1 <- sample(indexescategory1, p * length(indexescategory1), replace = FALSE)
+  
+  
+  ## For category 2
+  
+  # Identify the indexes associated with category 2
+  indexescategory2 <- ydf[ydf$y == levels(ydf$y)[2], ][ , "index"]
+  
+  # Set the seed to the seed specified above for reproducibility
+  set.seed(seednumber)
+  
+  # Sample only the second category and assign the elements belonging to the training set
+  assignedtotraincategory2 <- sample(indexescategory2, p * length(indexescategory2), replace = FALSE)
+  
+  
+  # Create the output vector comprising the indexes of the training set
+  classifiertrain <- sort(c(assignedtotraincategory1, assignedtotraincategory2))
+  
+  # Output
+  classifiertrain
+}
+
+
+## Make sure that the function TRind outputs something similar to the expected
+# Order the dataframe of samples following the order of the columns of samples in the genedata dataframe
+orderedgenesample <- data.frame()
+for (i in 1 : dim(genesample)[1]) {
+  
+  # Identify the rownumber in the gene samples dataframe with the same sample as the ith column of the gene data dataframe
+  rownumber = which(grepl(colnames(genedata)[i], genesample[ , 1]))
+  
+  # Add that row to the ordered gene sample dataframe
+  orderedgenesample <- rbind(orderedgenesample, genesample[rownumber, ])
+}
+
+# Evaluate if the order of the samples in the colnames of the gene data is the same as the order of the ordered gene sample dataframe
+colnames(genedata)[1:10]
+orderedgenesample[1:10, 1]
+
+# Create the vector of samples
+orderedvectorofsamples <- orderedgenesample[ , 2]
+
+# Evaluate whether TRind outputs the expected output under different seeds
+TRind(orderedvectorofsamples, 2/3)
+TRind(orderedvectorofsamples, 2/3, 256)
+TRind(orderedvectorofsamples, 2/3, 2)
+
+# And that the categories (tumor or normal) are more or less balanced
+table(orderedvectorofsamples[TRind(orderedvectorofsamples, 2/3)])
+table(orderedvectorofsamples[TRind(orderedvectorofsamples, 2/3, 256)])
+table(orderedvectorofsamples[TRind(orderedvectorofsamples, 2/3, 2)])
+```
+
+
+
+
+Problem 2
+---------
+
+1. Use the function TRind to create a training and a test set from your expression data. Use 2/3 of the
+data for the training set. Note that if you do not solve Problem 1, use createDataPartition
+from package caret. The function match can be helpful in assigning the class labels to
+samples in the data file.
+```{r}
+## Order the sample database to match the column names in the expression data database
+
+# Order the dataframe of samples following the order of the columns of samples in the genedata dataframe
+orderedgenesample <- data.frame()
+for (i in 1 : dim(genesample)[1]) {
+  
+  # Identify the rownumber in the gene samples dataframe with the same sample as the ith column of the gene data dataframe
+  rownumber = which(grepl(colnames(genedata)[i], genesample[ , 1]))
+  
+  # Add that row to the ordered gene sample dataframe
+  orderedgenesample <- rbind(orderedgenesample, genesample[rownumber, ])
+}
+
+# Evaluate if the order of the samples in the colnames of the gene data is the same as the order of the ordered gene sample dataframe
+colnames(genedata)[1:10]
+orderedgenesample[1:10, 1]
+
+
+## Generate the training and the testing sets
+
+# Generate indexes for the training subset, using for example a seed = 2
+train <- TRind(y = orderedvectorofsamples, p = 2/3, seednumber = 2)
+
+# Divide the dataframe gene data into train and test
+genedatatrain <- genedata[ , train]
+genedatatest <- genedata[ , - train]
+
+# Divide the outcome (labels) into train and test
+labeltrain <- orderedvectorofsamples[train]
+labeltest <- orderedvectorofsamples[- train]
+
+# Make sure that the dimensions make sense
+dim(genedata)
+dim(genedatatrain)
+dim(genedatatest)
+length(labeltrain)
+length(labeltest)
+
+# And that the name of the samples do not overlap
+table(colnames(genedatatrain) %in% colnames(genedatatest))
+```
+
+
+
+
+2. Train a k-NN classifier on to the training set and predict the labels of the test set using the function
+knn3Train from the caret package. Use k=2 and avoid the proportion of the votes for the winning class
+using prob=FALSE. Do not forget to initialize the random number generator before calling
+knn3Train. A seed value of 5 works well.
+```{r}
+#install.packages("caret")
+library(caret)
+
+# Set seed to 5 as recommended in the question
+set.seed(5)
+
+# Transpose the matrix and check that it looks as expected train set
+train <- data.frame(t(genedatatrain))
+train[1 : 10, 1 : 5]
+
+# Transpose the matrix and check that it looks as expected test set 
+test <- data.frame(t(genedatatest))
+test[1 : 10, 1 : 5]
+
+# K-nearest neighbors with k = 2 and probability = FALSE
+# The outcome variable is label, not gene, so the dataframe is transposed (labeltrain could be the output column of the dataframe)
+predictionknn <- knn3Train(train, test, cl = labeltrain, k = 2, prob = FALSE)
+predictionknn
+
+## ANSWER 2.2
+# All test samples are classified as being a Primary tumor
+```
+
+
+
+
+3. Train an SVM (support vector machine) classifier to the training set and then predict the labels for the
+samples of the test set using the functions svm and predict from package e1017. To understand how
+these functions work, look at the example described here: http://rischanlab.github.io/SVM.html. Use a
+cost parameter equal to 1 (i.e. cost=1) and a linear kernel.
+```{r}
+#install.packages("e1017")
+library(e1071)
+
+# Transpose the matrix train set predictors (the outcome for train is labeltrain)
+trainwithoutcome <- as.matrix(t(genedatatrain))
+
+# Set seed to 5 as recommended in the question
+set.seed(5)
+
+# Train the model in the training set
+svmfit <- svm(x = trainwithoutcome, y = labeltrain, kernel = "linear", cost = 1)
+
+# Test the prediction with the test set
+predictionsvm <- predict(svmfit, test)
+predictionsvm
+
+## ANSWER 2.3
+# svm classifies some samples as normal and some as tumor
+```
+
+
+
+
+4. Create two confusion matrices (here: 2x2 tables) to
+. compare the predictions of k-NN classifier with the true labels of the test set
+. compare the predictions of SVM classifer with the true labels of the test set
+Are the classifiers able to predict the labels of the test data well?
+```{r}
+# Confusion matrix for knn
+table(predictionknn, labeltest)
+
+# Confusion matrix for svm
+table(predictionsvm, labeltest)
+
+## ANSWER 2.4
+# The classifiers for knn are not able to predict the labels well (predict everything to be a tumor), while the classifiers for svm predict labels much better (almost perfect prediction)
+```
+
+
+
+
+5. Repeat steps 2,3, and 4 from above using only the top 250 genes with lowest p-value (as in Problem Set
+4 ). Does the classification performance improve with this smaller set of features relative to using all
+genes?
+Then use the function confusionMatrix from the caret package to check the accuracy of the predictions
+obtained by the two classifiers. Is there a classifier which shows the better performance in terms of accuracy?
+If yes, which one?
+Note that if you run the code multiple times using different indices generated by the TRind
+function, the results may change.
+```{r}
+# Look at the differential expression dataframe
+genediff[1 : 10, 1 : 5]
+
+# Order the new dataframe by p values and check that it looks reasonable 
+genediffpvalues <- genediff[order(genediff$pvalue), ]
+genediffpvalues[1 : 10, 1 : 5]
+
+# Select the top 250 differentially expressed genes and check that it looks reasonable
+genediffpvalues <- genediffpvalues[1 : 250, ]
+genediffpvalues[1 : 10, 1 : 5]
+
+#I create a limited version of the original expression data dataframe where only the top 250 differentially expressed genes are present and check that it looks reasonable
+genedatatrainlimited <- genedatatrain[rownames(genediffpvalues), ]
+genedatatrainlimited[1 : 10, 1 : 5]
+
+genedatatestlimited <- genedatatest[rownames(genediffpvalues), ]
+genedatatestlimited[1 : 10, 1 : 5]
+
+# Set seed to 5 as recommended in the question
+set.seed(5)
+
+# Transpose the matrix and check that it looks as expected train set
+trainlimited <- data.frame(t(genedatatrainlimited))
+trainlimited[1 : 10, 1 : 5]
+
+# Transpose the matrix and check that it looks as expected test set 
+testlimited <- data.frame(t(genedatatestlimited))
+testlimited[1 : 10, 1 : 5]
+
+# K-nearest neighbors with k = 2 and probability = FALSE
+# The outcome variable is label, not gene, so the dataframe is transposed (labeltrain could be the output column of the dataframe)
+predictionknnlimited <- knn3Train(trainlimited, testlimited, cl = labeltrain, k = 2, prob = FALSE)
+predictionknnlimited
+
+# Transpose the matrix and add the column of outcome (label) and check that it looks as expected train set
+trainwithoutcomelimited <- data.frame(t(genedatatrainlimited))
+trainwithoutcomelimited$labeltrain <- labeltrain
+trainwithoutcomelimited[1 : 10, 1 : 5]
+
+# Set seed to 5 as recommended in the question
+set.seed(5)
+
+# Train the model in the training set
+svmfitlimited <- svm(labeltrain ~ ., data = trainwithoutcomelimited, kernel = "linear", cost = 1)
+
+# Test the prediction with the test set
+predictionsvmlimited <- predict(svmfitlimited, test)
+predictionsvmlimited
+
+
+# Confusion matrix for knn
+table(predictionknnlimited, labeltest)
+
+# Now with the function confusionMatrix from caret for knn
+confusionMatrix(predictionknnlimited, labeltest)
+
+# Confusion matrix for svm
+table(predictionsvmlimited, labeltest)
+
+# Now with the function confusionMatrix from caret for svm
+confusionMatrix(predictionsvmlimited, labeltest)
+
+
+## ANSWER 2.5
+# For knn the classification improved a lot. For svm it did not improve, but it was already very good
+# The classifiers are now able to predict the labels very well with SVM predicting better than KNN in this case
+# In particular, accuracy for knn is 0.8214 (95% CI: 0.6311 to 0.9394), and for svm 0.9643 (95% CI: 0.8165 to 0.9991)
+```
+
+
+
+
+Problem 3
+---------
+
+Referring to the results obtained in Problem 2 above:
+1. Display the results of the two classifiers obtained from both the top 250 genes and the entire set of
+genes using a PCA plot (projection on the first two principal components) on the test set. Color the
+samples according to the true class labels reported in PRAD_sample_info_PSET7.txt and use different
+shapes to indicate the following groups of samples:
+. samples correctly classified (label as "FALSE", i.e. not misclassified)
+. misclassified by both algorithms (label as "BOTH")
+. misclassified only by k-NN (label as "k-NN")
+. misclassified only by SVM (label as "SVM")
+Display the two scatter plots next to each other in a single figure and label the plots and their axes properly.
+Include a legend for the colors and shapes.
+```{r}
+#install.packages("ggplot2")
+library(ggplot2)
+
+##################FULL SET
+
+# Principal components for the full set
+PCAgenes <- prcomp(test)
+
+# Extract the variance of the principal components
+PCAgenes$var <- PCAgenes$sdev ^ 2
+
+# Create a dataframe with the principal components and the variance scaled to a proportion
+PCAgenesdf <- data.frame(as.factor(paste0("PC", seq(1 : 2))), (PCAgenes$var[1 : 2] / sum(PCAgenes$var)))
+colnames(PCAgenesdf) <- c("PC", "value")
+PCAgenesdf
+
+# Create a dataframe with the knn classification, the svm classification, and the real values
+classification <- data.frame(predictionknn, predictionsvm, labeltest)
+# Transform factors to character to avoid discordance betwen different factor levels
+classification[ , 1] <- as.character(classification[ , 1])
+classification[ , 2] <- as.character(classification[ , 2])
+classification[ , 3] <- as.character(classification[ , 3])
+
+# Check if the labels are missclassified and classify accordingly
+for (i in 1 : dim(classification)[1]) {
+  if (classification[i, 1] == classification[i, 3] & classification[i, 2] == classification[i, 3]) {
+    classification$missclassified[i] <- "FALSE"
+  } else if (classification[i, 1] != classification[i, 3] & classification[i, 2] != classification[i, 3]) {
+    classification$missclassified[i] <- "BOTH"
+  } else if (classification[i, 1] != classification[i, 3] & classification[i, 2] == classification[i, 3]) {
+    classification$missclassified[i] <- "k-NN"
+  } else {
+    classification$missclassified[i] <- "SVM"
+  }
+} 
+classification
+
+# Collect the variable of interest for missclassification in a vector
+missclassified <- as.factor(classification$missclassified)
+
+# Plot the projection onto the first two components
+points <- ggplot(data = as.data.frame(PCAgenes$x), aes(x = PC1, y = PC2, color = labeltest, shape = missclassified)) + geom_point() + scale_color_discrete(name = "condition") +
+  ggtitle("All genes")
+points
+
+
+
+######################TOP 250 GENES
+
+# Principal components for the data with only 250 genes
+PCAgeneslimited <- prcomp(testlimited)
+
+# Extract the variance of the principal components
+PCAgeneslimited$var <- PCAgeneslimited$sdev ^ 2
+
+# Create a dataframe with the principal components and the variance scaled to a proportion
+PCAgeneslimiteddf <- data.frame(as.factor(paste0("PC", seq(1 : 2))), (PCAgeneslimited$var[1 : 2] / sum(PCAgeneslimited$var)))
+colnames(PCAgeneslimiteddf) <- c("PC", "value")
+PCAgeneslimiteddf
+
+# Create a dataframe with the knn classification, the svm classification, and the real values
+classificationlimited <- data.frame(predictionknnlimited, predictionsvmlimited, labeltest)
+
+# Transform factors to character to avoid discordance betwen different factor levels
+classificationlimited[ , 1] <- as.character(classificationlimited[ , 1])
+classificationlimited[ , 2] <- as.character(classificationlimited[ , 2])
+classificationlimited[ , 3] <- as.character(classificationlimited[ , 3])
+
+# Check if the labels are missclassified and classify accordingly
+for (i in 1 : dim(classificationlimited)[1]) {
+  if (classificationlimited[i, 1] == classificationlimited[i, 3] & classificationlimited[i, 2] == classificationlimited[i, 3]) {
+    classificationlimited$missclassified[i] <- "FALSE"
+  } else if (classificationlimited[i, 1] != classificationlimited[i, 3] & classificationlimited[i, 2] != classificationlimited[i, 3]) {
+    classificationlimited$missclassified[i] <- "BOTH"
+  } else if (classificationlimited[i, 1] != classificationlimited[i, 3] & classificationlimited[i, 2] == classificationlimited[i, 3]) {
+    classificationlimited$missclassified[i] <- "k-NN"
+  } else {
+    classificationlimited$missclassified[i] <- "SVM"
+  }
+} 
+classificationlimited
+
+# Collect the variable of interest for missclassification in a vector
+missclassifiedlimited <- as.factor(classificationlimited$missclassified)
+
+# Plot the projection onto the first two components
+pointslimited <- ggplot(data = as.data.frame(PCAgeneslimited$x), aes(x = PC1, y = PC2, color = labeltest, shape = missclassifiedlimited)) + geom_point() + scale_color_discrete(name = "condition") +
+  ggtitle("Top 250 genes")
+pointslimited
+
+## DISPLAY THE FIGURES NEXT TO EACH OTHER (I assume one up and one down, otherwise they appear too squeezed)
+#install.packages("gridExtra")
+library(gridExtra)
+grid.arrange(points, pointslimited, ncol = 1)
+```
+
+
+
+
+2. Install the R devtools package and use it to install the package ggalluvial from Github: https:
+//github.com/corybrunson/ggalluvial. Use as reference the vignette, available at https://github.com/
+corybrunson/ggalluvial/blob/master/vignettes/ggalluvial.rmd. In particular, look at the example
+provided for the "vaccination" data. Create two alluvial plots that compare the results in the test set
+from the two classifiers obtained from both the top 250 genes and the entire set of genes as shown in
+figure below. Set up the plots with the "True_Labels" column in the center as displayed in the figure.
+Arrange the plots as two panels of a single figure and name them properly.
+```{r}
+#install.packages("devtools")
+library(devtools)
+
+# Install ggalluvial following the instructions from the ggalluvial's author's website
+#devtools::install_github("corybrunson/ggalluvial", build_vignettes = TRUE)
+library(ggalluvial)
+
+## ALL GENES
+
+# Enter the data as above
+method <- c(rep("k-NN", length(predictionknn)), rep("True_Labels", length(labeltest)), rep("SVM", length(predictionsvm)))
+classification <- as.factor(c(as.character(predictionknn), as.character(labeltest), as.character(predictionsvm)))
+subject <- rep(seq(from = 1, to = length(predictionknn)), 3)
+
+# Collect the data in a dataframe
+alluvialclassification <- data.frame(method, classification, subject)
+alluvialclassification
+
+# Order the levels of method for the plot
+alluvialclassification$method <- ordered(alluvialclassification$method, levels = c("k-NN", "True_Labels", "SVM"))
+
+# Create the plot
+alluvialall <- ggplot(alluvialclassification,
+       aes(x = method, stratum = classification, alluvium = subject, fill = classification, label = classification)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) + 
+  theme(legend.position = "none") + 
+  ggtitle("Classification Cancer Data - All genes") +
+  xlab("Classification") 
+alluvialall
+
+
+## 250 GENES
+
+# Enter the data as above
+methodlimited <- c(rep("k-NN", length(predictionknnlimited)), rep("True_Labels", length(labeltest)), rep("SVM", length(predictionsvmlimited)))
+classificationlimited <- as.factor(c(as.character(predictionknnlimited), as.character(labeltest), as.character(predictionsvmlimited)))
+subjectlimited <- rep(seq(from = 1, to = length(predictionknnlimited)), 3)
+
+# Collect the data in a dataframe
+alluvialclassificationlimited <- data.frame(methodlimited, classificationlimited, subjectlimited)
+alluvialclassificationlimited
+
+# Order the levels of method for the plot
+alluvialclassificationlimited$methodlimited <- ordered(alluvialclassificationlimited$methodlimited, levels = c("k-NN", "True_Labels", "SVM"))
+
+# Create the plot
+alluvial250 <- ggplot(alluvialclassificationlimited,
+       aes(x = methodlimited, stratum = classificationlimited, alluvium = subjectlimited, fill = classificationlimited, label = classificationlimited)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) + 
+  theme(legend.position = "none") + 
+  ggtitle("Classification Cancer Data - Top 250 genes") +
+  xlab("Classification") 
+alluvial250
+
+## DISPLAY THE FIGURES NEXT TO EACH OTHER (I assume one up and one down, otherwise they appear too squeezed)
+grid.arrange(alluvialall, alluvial250, ncol = 1)
+```
+
+
+
+
+Problem 4
+---------
+
+In this problem you will implement cross-validation for k-NN and determine the optimal number of neighbors
+and features to use for a k-NN classifier.
+1. Write a function named knn_cv that performs k-fold cross-validation for a k-NN classifier. As input it
+should have:
+. the expression data D (already normalized)
+. labels L, already ordered according to the column names of the expression dataset
+. the number of folds K for the cross-validation
+. the k parameter for the K-NN classifier
+Note that in order to receive full credit, the function must be able to operate on datasets with
+variable numbers of samples, different from the data set that we provide for this problem set.
+The function must:
+. partition the data and iterate the k-NN classification K times using the samples of one of the K splits
+as test set at each iteration. Note that each sample must be used only once in the test
+set across all iterations. Also remember to generate K splits with a balanced number of
+samples per class. While not necessary, the function TRind created in Problem 1 above
+might be helpful.
+. in each iteration, perform the k-NN classification using the function knn3Train(). Use prob=FALSE.
+This way you repeat the classification K times on a training set that is different and has no overlaps with
+the training sets used in the other iterations. For reproducibility purposes, use a seed value of
+10.
+. provide as output the average accuracy across the K iterations of the cross validation. Use the function
+confusionMatrix to extract the overall accuracy.
+Note that considering for example your data, with 7-fold cross-validation you should have 12
+samples per test set at each iteration: 6 samples should be to Primary Tumor and 6 should
+be Solid Tissue Normal.
+```{r}
+## Function for cross validation
+knn_cv <- function(D, L, K, k) {
+  
+  #INPUTS:
+  # D (dataframe): expression data, already normalized and with samples in columns and genes in rows
+  # L (vector): labels, already ordered according to the column names of the expression dataset
+  # K (integer): number of folds for cross-validation
+  # k (integer): parameter k for the knn
+  
+  #OUTPUT:
+  # Average accuracy across the K iterations of the cross validation
+  
+  ## FUNCTION
+  
+  ###################### Partition the labels
+  
+  ## Transform the vector of labels L into a dataframe so that each row has an index
+  originalLdf <- data.frame(L)
+  originalLdf$index <- as.numeric(as.character(rownames(originalLdf)))
+  
+
+  
+  ## For each loop of cross-validation the test set will be of size total database  divided K times and the rest of the database will be the train set
+  
+  # Dimensions of the dataframe length(L)
+  # Number of subsets K
+  # Dimensions of each subset length(L) / K
+  sizefold <- round(length(L) / K)
+
+  
+  
+  # DATA TO BE USED AS TEST SET (use data that has not been used yet, initially the same as the original, with each loop of the cross validation the data that has not been used yet for test set)
+  Ldf <- originalLdf
+  
+  
+  # Create an empty vector to collect the accuracies of each loop of the cross validation
+  accuracyvector <- vector()
+##################################################BEGINNING OF THE CROSS VALIDATION LOOP#########################  
+  
+  for (i in 1 : K) {
+    
+    
+  ## If the Ldf is smaller than the sizefold, it means that the last round of cross validation is smaller than the rest and we should use all data for test set
+    
+    ### BEGINNING OF THE IF LOOP
+    # If the remaining dataframe is smaller than the sizefold
+    if (dim(Ldf)[1] < sizefold) {
+      
+      # It is the last cross validation round and it is smaller than the rest, use it all
+      classifiertest <- Ldf[ , "index"]
+      
+      # If not, partition as usual
+    } else {
+    
+    
+  ## As the database has 2 categories, and we want to ensure that the categories are similarly distributed in training and testing sets, we sample separately each category
+    
+    
+  ## For category 1
+
+  # Identify the indexes associated with category 1
+  indexescategory1 <- Ldf[Ldf$L == levels(Ldf$L)[1], ][ , "index"]
+    
+  # Set the seed to 10 as specified in the problem
+  set.seed(10)
+  
+  # Sample only from the first category and assign the elements belonging to the test set
+  assignedtotestcategory1 <- sample(indexescategory1, sizefold / 2, replace = FALSE)
+  
+  
+  ## For category 2
+  
+  # Identify the indexes associated with category 2
+  indexescategory2 <- Ldf[Ldf$L == levels(Ldf$L)[2], ][ , "index"]
+  
+  # Set the seed to 10 as specified in the problem
+  set.seed(10)
+  
+  # Sample only the second category and assign the elements belonging to the test set
+  assignedtotestcategory2 <- sample(indexescategory2, sizefold / 2, replace = FALSE)
+  
+  
+  # Create the output vector comprising the indexes of the test set
+  classifiertest <- sort(c(assignedtotestcategory1, assignedtotestcategory2))
+  
+    }
+  ### END OF THE IF LOOP
+  
+  # Output
+  classifiertest
+  
+  
+  ##############Eliminate rows that have been already used in prior test sets
+  Ldf <- Ldf[- classifiertest , ]
+  
+  
+  
+  ###################### Partition the columns following the order included in the labels (I am assuming that the data is entered with the samples in the columns, not in the rows)
+  
+  # Create datatest (fold where the data will be tested in this round of cross validation)
+  Dtest <- D[ , classifiertest]
+  
+  # Create datatrain (rest of the folds used for training in this round of cross validation)
+  Dtrain <- D[ , - classifiertest]
+  
+
+  
+  
+  ###################### knn 
+  
+  # Identify the real labels
+  labeltrain <- L[- classifiertest]
+  labeltest <- L[classifiertest]
+  
+  # Set the seed to 10 as specified in the problem
+  set.seed(10)
+  
+  # Apply the knn
+  predictionknn <- knn3Train(t(Dtrain), t(Dtest), cl = labeltrain, k = k, prob = FALSE)
+predictionknn
+  
+  # Calculate the confusion matrix accuracy for this round of cross validation
+  accuracy <- confusionMatrix(predictionknn, labeltest)$overall["Accuracy"]
+  
+  # Add this new accuracy to the vector
+  accuracyvector <- c(accuracyvector, accuracy)
+  ############################################################END OF THE CROSS VALIDATION LOOP#########################
+  }
+
+  # Calculate the mean of the accuracies across all rounds of cross validation
+  meanaccuracy <- mean(accuracyvector)
+  
+  ## OUTPUT
+  meanaccuracy
+  
+  # End of function
+}
+```
+
+
+
+
+2. Use knn_cv to perform k-NN with 7-fold cross-validation for the following combinations of k parameters
+and top n number of features (using the order according to the p-values as before, remembering that
+the top p-values are the smallest ones):
+. k = c(2,5,7,9,11,13,15,17,19,21,25,30,40,50)
+. n = c(5,10,20,30,40,50,75,100,125,150,200,250)
+At the end you should create a 12x14 matrix of elements (n_j,k_i), each representing one combination of the
+k parameter and the number of features n from the values of the two grids provided above. Each element of
+the matrix should report the average accuracy resulting from the cross-validation.
+Note that if you are not able to solve the first part of this problem, use the functions
+trainControl and train from caret package as explained in the lecture. Do not use repeats
+and keep the default grid of k parameters provided by the train function, without setting the grid as above.
+Do not preprocess the data, as we have already normalized them in Problem 1 above. For the purpose of
+this exercise, which is only to find the best combination(s) of parameters and number of features and not to
+5
+predict new samples, provide as input the entire dataset: the function train will split the data automatically.
+Use the accuracies for k reported by the function to generate the matrix at different number of features.
+```{r}
+# Look at the differential expression dataframe
+genediff[1 : 10, 1 : 5]
+
+# Order the new dataframe by p values and check that it looks reasonable 
+genediffpvalues <- genediff[order(genediff$pvalue), ]
+genediffpvalues[1 : 10, 1 : 5]
+
+
+## CREATE THE MATRIX
+
+# Create an empty 12x14 matrix
+results <- matrix( , nrow = 12, ncol = 14)
+results
+
+# Insert the data as provided in the problem
+kvalues <- c(2,5,7,9,11,13,15,17,19,21,25,30,40,50)
+nvalues <- c(5,10,20,30,40,50,75,100,125,150,200,250)
+
+## Create the loop to apply that information in the 14 different conditions
+for (j in 1 : length(nvalues)) {
+  
+  # Define n for this case
+  n <- nvalues[j]
+  
+  # Identify the top n genes
+  genediffpvaluestopn <- genediffpvalues[1 : n, ]
+  
+  # Create the data with the n top genes
+  D <- genedata[rownames(genediffpvaluestopn), ]
+  
+  for (i in 1 : length(kvalues)) {
+  
+  # Define k for this case
+  k <- kvalues[i]
+  
+  # Apply the function 
+  accuracyforthiscondition <- knn_cv(D = D, L = orderedvectorofsamples, K = 7, k = k) 
+  
+  # Add the value to the matrix
+  results[j, i] <- accuracyforthiscondition
+    }
+}
+
+## RETURN THE MATRIX OF RESULTS
+results
+```
+
+
+
+
+3. Use ggplot2 to create a heatmap plot of the resulting 12x14 accuracy matrix and provide the best
+combination(s) of k and number of features n for the classification. For an example on how to create a
+heatmap with ggplot2, look at the example described at https://learnr.wordpress.com/2010/01/26/
+ggplot2-quick-heatmap-plotting/ or build on this example:
+```{r}
+## Create empty dataframe
+resultsdf <- data.frame()
+
+# Create an empty vector to save values
+values <- vector()
+
+## Create loop to enter the data
+for (i in 1 : 14) {
+  for (j in 1 : 12) {
+    # Append the new value
+    values <- c(values, results[j, i])
+  }
+}
+
+# Create the dataframe entering the values
+resultsdf <- expand.grid(
+rows = paste0("n = ", nvalues),
+columns = paste0("k = ", kvalues))
+resultsdf$accuracy <- values
+Accuracy <- resultsdf$accuracy
+
+#install.packages("ggplot2")
+library(ggplot2)
+
+# Create the plot
+heatmapbest <- ggplot(resultsdf) + geom_tile(aes(x = columns, y = rows, fill = values)) +
+  scale_fill_gradientn(colours = c("gray100","gray0")) +
+  ggtitle("Accuracy heatmap") + xlab("k") + ylab("n")
+heatmapbest
+
+
+## ANSWER 3.3
+# The best combinations are 
+# n = 30 and k = 9
+# Followed closely by
+# n = 30 and k = 7
+# n = 20 and k = 17
+```
+
+
+
+
+4. Bonus Points: Using the same data as in the heatmap, create a line chart matrix like the one shown
+below.
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+
+# Create a tibble (I am sure there are more elegant and less painful ways of creating this tibble, but I do not remember them if they were explained)
+resultstb <- tribble(
+  ~n, ~k2, ~k5, ~k7, ~k9, ~k11, ~k13, ~k15, ~k17, ~k19, ~k21, ~k25, ~k30, ~k40, ~k50,
+  "n5", results[1, 1], results[1, 2], results[1, 3], results[1, 4], results[1, 5], results[1, 6], results[1, 7], results[1, 8], results[1, 9], results[1, 10], results[1, 11], results[1, 12], results[1, 13], results[1, 14],
+  "n10", results[2, 1], results[2, 2], results[2, 3], results[2, 4], results[2, 5], results[2, 6], results[2, 7], results[2, 8], results[2, 9], results[2, 10], results[2, 11], results[2, 12], results[2, 13], results[2, 14],
+  "n20", results[3, 1], results[3, 2], results[3, 3], results[3, 4], results[3, 5], results[3, 6], results[3, 7], results[3, 8], results[3, 9], results[3, 10], results[3, 11], results[3, 12], results[3, 13], results[3, 14],
+  "n30", results[4, 1], results[4, 2], results[4, 3], results[4, 4], results[4, 5], results[4, 6], results[4, 7], results[4, 8], results[4, 9], results[4, 10], results[4, 11], results[4, 12], results[4, 13], results[4, 14],
+  "n40", results[5, 1], results[5, 2], results[5, 3], results[5, 4], results[5, 5], results[5, 6], results[5, 7], results[5, 8], results[5, 9], results[5, 10], results[5, 11], results[5, 12], results[5, 13], results[5, 14],
+  "n50", results[6, 1], results[6, 2], results[6, 3], results[6, 4], results[6, 5], results[6, 6], results[6, 7], results[6, 8], results[6, 9], results[6, 10], results[6, 11], results[6, 12], results[6, 13], results[6, 14],
+  "n75", results[7, 1], results[7, 2], results[7, 3], results[7, 4], results[7, 5], results[7, 6], results[7, 7], results[7, 8], results[7, 9], results[7, 10], results[7, 11], results[7, 12], results[7, 13], results[7, 14],
+  "n100", results[8, 1], results[8, 2], results[8, 3], results[8, 4], results[8, 5], results[8, 6], results[8, 7], results[8, 8], results[8, 9], results[8, 10], results[8, 11], results[8, 12], results[8, 13], results[8, 14],
+  "n125", results[9, 1], results[9, 2], results[9, 3], results[9, 4], results[9, 5], results[9, 6], results[9, 7], results[9, 8], results[9, 9], results[9, 10], results[9, 11], results[9, 12], results[9, 13], results[9, 14],
+  "n150", results[10, 1], results[10, 2], results[10, 3], results[10, 4], results[10, 5], results[10, 6], results[10, 7], results[10, 8], results[10, 9], results[10, 10], results[10, 11], results[10, 12], results[10, 13], results[10, 14],
+  "n200", results[11, 1], results[11, 2], results[11, 3], results[11, 4], results[11, 5], results[11, 6], results[11, 7], results[11, 8], results[11, 9], results[11, 10], results[11, 11], results[11, 12], results[11, 13], results[11, 14],
+  "n250", results[12, 1], results[12, 2], results[12, 3], results[12, 4], results[12, 5], results[12, 6], results[12, 7], results[12, 8], results[12, 9], results[12, 10], results[12, 11], results[12, 12], results[12, 13], results[12, 14]
+)
+
+# Tidy the tibble
+resultstb <- resultstb %>% gather(`k2`, `k5`, `k7`, `k9`, `k11`, `k13`, `k15`, `k17`, `k19`, `k21`, `k25`, `k30`, `k40`, `k50`, key = "k", value = "accuracy")
+resultstb
+
+# Create the plot
+lineplot <- ggplot(data = resultstb) + geom_line(mapping = aes(x = k, y = resultstb$accuracy, group = n)) + facet_wrap(~n, ncol = 4, nrow = 3) +
+  ggtitle("Line plot") + 
+  ylab("Accuracy")
+lineplot
+```
+#----------
+#---------- Values for k and n do not appear ordered, because ggplot converts the elements into 
+#---------- factors whose levels are sorted in alphabetical order. Try to type as.factor(resultstb$k)
+#---------- and look at the levels.
+#----------
+
+
+
+Problem 5
+---------
+
+22 hours
+
+

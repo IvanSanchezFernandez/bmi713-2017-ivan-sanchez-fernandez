@@ -1,0 +1,617 @@
+1 16/16
+2 16/16
+3 18/18
+4 18/18
+5 15/16
+6 16/16
+7 14/20
+
+
+Comment on shiny App
+
+* The tabsetpanel is missing from the layout
+* The app is poorly optimized. Every option uploads the file file from scratch. No use of reactive variables
+* Data are lof transformed but not rescaled
+* Plot is missing (you called it disPlot in the UI and distPlot in the server)
+* No use of ggplot
+
+HOMEWORK 4 Ivan Sanchez Fernandez
+---------------------------------
+---------------------------------
+
+
+
+
+Download the following data from https://www.dropbox.com/sh/rlj714terrzakc7/AACELk752w4GPAsJXYi8Vbb5a?
+dl=0
+. PRAD_norm_counts.txt - Gene Expression data from patients with prostate cancer adenocarcinoma
+(TCGA dataset). Normalized RNAseq counts on 86 matched tumor-normal samples and 55,635 genes.
+Each row reports the expression levels of each gene across the samples.
+. PRAD_sample_info.txt - Labels associated to the samples ("Primary Tumor" and "Solid Tissue")
+. RES_DESeq2_PRAD.txt - List of genes differentially expressed in Primary tumors with respect to
+Solid Tissue
+
+
+
+
+Exercise 1
+----------
+
+Load PRAD dataset and the labels on the samples into your R workspace. 
+```{r}
+#I load the dataframes and check if they look reasonable by inspecting the first few rows and columns
+PRADnorm <- read.table("~/Dropbox/LAB4_BMI715_DATA/PRAD_norm_counts.txt",
+                       header = TRUE, sep = "")
+PRADnorm[1 : 10, 1 : 5]
+PRADsample <- read.table("~/Dropbox/LAB4_BMI715_DATA/PRAD_sample_info.txt",
+                       header = TRUE, sep = "\t")
+PRADsample[1 : 10, 1 : 3]
+```
+
+
+
+Log2 transform the data, adding an offset equal to 1. 
+```{r}
+#I add an offset to the database
+#I check that the dataframe changes as expected evaluating the first few rows and columns
+PRADnorm[1 : 10, 1 : 5]
+PRADnorm <- (PRADnorm + 1)
+PRADnorm[1 : 10, 1 : 5]
+
+#I log2 transform the data
+#I check that the dataframe changes as expected evaluating the first few rows and columns
+PRADnorm[1 : 10, 1 : 5]
+PRADnorm <- log2(PRADnorm)
+PRADnorm[1 : 10, 1 : 5]
+```
+
+
+
+
+Prior to PCA (and then clustering) analysis, it is preferable to rescale variables (i.e. genes)
+for comparability. Scale the log2-transformed data by genes using the function scale(). NOTE: the function
+scale() scales by columns, therefore the matrix has to be transposed using t() command.
+```{r}
+#First, I transform the dataframe PRADnorm into a matrix and check that it has similar values to the database
+PRADnormmatrix <- as.matrix(PRADnorm)
+PRADnorm[1 : 10, 1 : 5]
+PRADnormmatrix[1 : 10, 1 : 5]
+```
+
+
+
+
+```{r}
+#I scale the new matrix and check that it looks reasonably as expected
+PRADnormmatrixscaled <- t(scale(t(PRADnormmatrix)))
+PRADnormmatrix[1 : 10, 1 : 5]
+PRADnormmatrixscaled[1 : 10, 1 : 5]
+```
+
+
+
+
+Perform the PCA analysis 
+```{r}
+#I perform the principal components analysis with the prcomp function
+#The data are already centered and scaled, but it does not change if we center and scale again
+PCAgenes <- prcomp(t(PRADnormmatrixscaled), center = TRUE, scale = TRUE)
+```
+
+
+
+
+and plot in the same window:
+. a barplot with the percentage of variance explained by the first 10 principal components;
+```{r}
+# I extract the variance of the principal components
+PCAgenes$var <- PCAgenes$sdev ^ 2
+
+#I create a dataframe with the principal components and the variance scaled to a proportion
+PCAgenesdf <- data.frame(as.factor(paste0("PC", seq(1 : 10))), (PCAgenes$var[1 : 10] / sum(PCAgenes$var)))
+colnames(PCAgenesdf) <- c("PC", "value")
+PCAgenesdf
+
+#Order the levels of the factor PC
+PCAgenesdf$PC <- ordered(PCAgenesdf$PC, levels = paste0("PC", seq(1 : 10)))
+
+#I create the barplot
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("scales") for including percentage
+library(scales)
+bars <- ggplot(data = PCAgenesdf, aes(x = PC, y = value)) + geom_bar(stat = "identity", fill = "green") + 
+  xlab("Principal Components") + ylab("Percentage of explained variance") + scale_y_continuous(labels = percent) + ggtitle("Scree Plot")
+#I prefer a more lively color and to plot percentages with the % sign
+bars
+```
+
+. the first two components, highlighting Primary Tumor vs Solid Tissue Normal classification.
+```{r}
+#I add the column with type of tissue classification
+classification <- as.factor(unlist(PRADsample[ , 2])) 
+
+
+#I plot the projection onto the first two components
+points <- ggplot(data = as.data.frame(PCAgenes$x), aes(x = PC1, y = PC2, color = classification)) + geom_point() + scale_color_discrete(name = "condition")
+points
+```
+
+
+
+
+For both points, use functions from ggplot2 package and function grid.arrange() from package gridExtra
+to create the plot.
+```{r}
+#I arrange the plots within the same figure
+#install.packages("gridExtra")
+library(gridExtra)
+plots <- list(bars, points)
+do.call(grid.arrange, plots)
+```
+
+
+
+
+Exercise 2
+----------
+
+Perform k-means clustering of all the samples. Set the number of clusters to k=2. Display in a table how samples are distributed across the two clusters with respect to the classification "Primary Tumor" vs "Solid Tissue Normal". Use function kable() from knitr package in your Rmarkdown.
+```{r}
+#I do the k-means clustering and save it under the variable name kmeansgenes
+kmeansgenes <- kmeans(t(PRADnormmatrixscaled), centers = 2, nstart = 100)
+
+#I create the table comparing cluster classification with real classification
+#install.packages("knitr")
+library(knitr)
+kable(table(kmeansgenes$cluster, PRADsample[ , 2]))
+```
+
+
+
+
+Then load the file "RES_DESeq2_PRAD.txt" in your R workspace. Starting from the scaled log2-transformed data, extract the sub-matrix keeping the top 250 differentially expressed genes between primary tumors and solid normal
+tissues with the lowest p-value and repeat the clustering. (NOTE: use the command order). What happens
+to the clustering results with respect to the classification "Primary Tumor" vs "Solid Tissue Normal"? NOTE:
+k-means uses a random starting solution and thus different runs can lead to different results. Therefore,
+trying several random starts is often recommended. Set the parameter "nstart" equal to 100.
+```{r}
+#I upload the new dataframe and check that it looks reasonable
+PRADpvalues <- read.table("~/Dropbox/LAB4_BMI715_DATA/RES_DESeq2_PRAD.txt",
+                       header = TRUE, sep = "")
+PRADpvalues[1 : 10, 1 : 5]
+
+#I order the new dataframe by p values and check that it looks reasonable 
+PRADpvalues <- PRADpvalues[order(PRADpvalues$pvalue), ]
+PRADpvalues[1 : 10, 1 : 5]
+
+#I select the top 250 differentially expressed genes and check that it looks reasonable
+PRADpvalues <- PRADpvalues[1 : 250, ]
+PRADpvalues[1 : 10, 1 : 5]
+
+#I create a limited version of the original matrix where only the top 250 differentially expressed genes are present and check that it looks reasonable
+PRADnormlimited <- PRADnormmatrixscaled[rownames(PRADpvalues), ]
+PRADnormlimited[1 : 10, 1 : 5]
+
+#I repeat the clustering in this limited dataset
+kmeansgeneslimited <- kmeans(t(PRADnormlimited), centers = 2, nstart = 100)
+
+#I compare the results
+kable(table(kmeansgeneslimited$cluster, PRADsample[ , 2]))
+
+#ANSWER 2:
+#The classification gets better with only 5 samples missclassified (as compared to 11 samples missclassified above)
+```
+
+
+PRADnorm <- read.table("~/Dropbox/LAB4_BMI715_DATA/PRAD_norm_counts.txt",
+                       header = TRUE, sep = "")
+
+
+
+
+Exercise 3
+----------
+
+Using the sub matrix on the top 250 genes, repeat the k-means clustering by genes using k=2 and plot the results using the function clusplot() of the package cluster.
+```{r}
+#install.packages("cluster")
+library(cluster)
+
+#I repeat the clustering in this limited dataset
+kmeansgeneslimited <- kmeans(PRADnormlimited, centers = 2, nstart = 100)
+
+#I plot the results with clusplot
+clusplot(PRADnormlimited, kmeansgeneslimited$cluster, line = 0, main = "Cluster plot")
+```
+
+#------------
+#------------ Gene labels? You can use labels=2 next time.
+#------------
+
+
+To understand how well the clusters are separated, calculate and plot in the same window the silhouettes for both k=2 and k=3. Comment the obtained results. NOTE: Use function silhouette() from package fpc.
+```{r}
+#install.packages("fpc")
+library(fpc)
+
+#I repeat the clustering in this limited dataset for k = 2
+kmeansgeneslimitedk2 <- kmeans(PRADnormlimited, centers = 2, nstart = 100)
+
+#I create the silhouette and plot it
+silk2 <- silhouette(kmeansgeneslimitedk2$cluster, dist(PRADnormlimited))
+plot(silk2, col = 1:2, main = "Silhouette plot k = 2")
+
+#I repeat the clustering in this limited dataset for k = 3
+kmeansgeneslimitedk3 <- kmeans(PRADnormlimited, centers = 3, nstart = 100)
+
+#I create the silhouette and plot it
+silk3 <- silhouette(kmeansgeneslimitedk3$cluster, dist(PRADnormlimited))
+plot(silk3, col = 1:3, main = "Silhouette plot k = 3")
+
+#Now I display the plots within the same window
+par(mfrow = c(1, 2))
+plot(silk2, col = 1:2, main = "Silhouette plot k = 2")
+plot(silk3, col = 1:3, main = "Silhouette plot k = 3")
+
+## ANSWER 3:
+#The silhouette measures how similar an item is to its own cluster. The value ranges from - 1 to 1. A high value means that the object is similar to its own cluster and dissimilar from other clusters. Therefore, values close to 1 are preferable. Based on the graphs below, it appears that 2 centers yields a more sensible result because the silhouette value of most items are around 0.4-0.6 while for 3 centers the silhouette value of many items decreases to the 0.1-0.2 with only a few clusters maintaining the 0.4-0.6 values. This is reflected in the average silhouettes that decreases from 0.57 with 2 clusters to 0.26 with 3 clusters.
+```
+#I repeat the clustering in this limited dataset
+kmeansgeneslimited <- kmeans(PRADnormlimited, centers = 2, nstart = 100)
+
+sil <- silhouette(kmeansgeneslimited$cluster, PRADnormlimited)
+
+
+
+
+Exercise 4
+----------
+
+Perform the hierarchical clustering analysis both by genes and by samples using only the sub-matrix with the
+top 250 genes that are most differentially expressed. Use euclidean distance and average linkage, with k=2.
+Compare the results with the k-means in the following way:
+. For the clustering by genes, generate a table 2x2 that reports the counts of the intersection of number
+of genes in the first and second cluster obtained from the hierarchical approach with the corresponding
+number of genes in the two clusters obtained by the k-means.
+```{r}
+##GENES
+
+#I calculate euclidean distance between genes
+euclideangenes <- dist(PRADnormlimited)
+
+# I perform the hierarchical clustering for genes with euclidean distance and average linkage and check if it looks reasonable
+hclusteuclideangenes <- hclust(euclideangenes, method = "average")
+plot(hclusteuclideangenes)
+
+#I calculate the cluster values for genes
+hclustersgenes <- cutree(hclusteuclideangenes, 2)
+
+#I repeat the clustering in this limited dataset for k = 2
+kmeansgenes <- kmeans(PRADnormlimited, centers = 2, nstart = 100)
+
+#I compare the results
+kable(table(hclustersgenes, kmeansgenes$cluster))
+
+## ANSWER 4:
+#Both methods (hierarchical clustering and k-means) arrive at the same clusters when the clusters are 2. They agree perfectly
+```
+
+
+
+
+. For the clustering by samples, perform the PCA on the sub-matrix and display the samples across the
+first two components (as done in Exercise 1) twice in the same window, coloring the samples accordingly
+to first the results obtained by k-means and then by the results from the hierarchical clustering.
+```{r}
+##SAMPLES
+
+#I calculate euclidean distance between samples
+euclideansamples <- dist(t(PRADnormlimited))
+
+# I perform the hierarchical clustering for samples with euclidean distance and average linkage and check if it looks reasonable
+hclusteuclideansamples <- hclust(euclideansamples, method = "average")
+plot(hclusteuclideansamples)
+
+#I calculate the cluster values for samples
+hclusterssamples <- cutree(hclusteuclideansamples, 2)
+
+#I kmeans cluster for k = 2
+kmeanssamples <- kmeans(t(PRADnormlimited), centers = 2, nstart = 100)
+
+#I calculate principal components
+PCAgeneslimited <- prcomp(t(PRADnormlimited), center = TRUE, scale = TRUE)
+
+# I extract the variance of the principal components
+PCAgeneslimited$var <- PCAgeneslimited$sdev ^ 2
+
+#I create a dataframe with the principal components and the variance scaled to a proportion
+PCAgeneslimiteddf <- data.frame(as.factor(paste0("PC", seq(1 : 2))), (PCAgeneslimited$var[1 : 2] / sum(PCAgeneslimited$var)))
+colnames(PCAgeneslimiteddf) <- c("PC", "value")
+PCAgeneslimiteddf
+
+#I plot the projection onto the first two components
+uncolored <- ggplot(data = as.data.frame(PCAgeneslimited$x), aes(x = PC1, y = PC2)) + geom_point() + scale_color_discrete(name = "condition")
+uncolored
+
+#Colored by kmeans
+kmeansplot <- ggplot(data = as.data.frame(PCAgeneslimited$x), aes(x = PC1, y = PC2, color = as.factor(kmeanssamples$cluster))) + geom_point() + scale_color_discrete(name = "Clustering k-means")
+kmeansplot
+
+#Colored by hierarchical clustering
+hclustplot <- ggplot(data = as.data.frame(PCAgeneslimited$x), aes(x = PC1, y = PC2, color = as.factor(hclusterssamples))) + geom_point() + scale_color_discrete(name = "Clustering hierarchical")
+hclustplot
+
+#I arrange the plots within the same window
+plots <- list(hclustplot, kmeansplot)
+do.call(grid.arrange, plots)
+```
+
+
+
+
+Exercise 5
+----------
+
+1. Display the results from the hierarchical clustering by a heatmap plot, using the pheatmap() from
+the pheatmap package. Use cutree_col=2.
+```{r}
+#install.packages("pheatmap")
+library(pheatmap)
+pheatmap(PRADnormlimited)
+```
+
+#------------
+#------------ The exercise asks also to use cutree_col=2.
+#------------
+
+
+2. Then repeat the hierarchical clustering by genes using:
+. manhattan distance, single linkage and k=2;
+```{r}
+#install.packages("dendextend")
+library(dendextend)
+
+#I calculate manhattan distance between genes
+manhattangenes <- dist(PRADnormlimited, method = "manhattan")
+
+# I perform the hierarchical clustering for genes with manhattan distance and single linkage and check if it looks reasonable
+hclustmanhattangenes <- hclust(manhattangenes, method = "single")
+dendmanhattan <- as.dendrogram(hclustmanhattangenes)
+labels_colors(dendmanhattan) <- cutree(hclustmanhattangenes, 2)[order.dendrogram(dendmanhattan)]
+labels_cex(dendmanhattan) <- 0.2
+plotmanhattan <- plot(dendmanhattan)
+plotmanhattan
+```
+
+
+
+
+. euclidean distance, complete linkage and k=2.
+```{r}
+#I calculate euclidean distance between genes
+euclideangenes <- dist(PRADnormlimited, method = "euclidean")
+
+# I perform the hierarchical clustering for genes with euclidean distance and complete linkage and check if it looks reasonable
+hclusteuclideangenes <- hclust(euclideangenes, method = "complete")
+dendeuclidean <- as.dendrogram(hclusteuclideangenes)
+labels_colors(dendeuclidean) <- cutree(hclusteuclideangenes, 2)[order.dendrogram(dendeuclidean)]
+labels_cex(dendeuclidean) <- 0.2
+ploteuclidean <- plot(dendeuclidean)
+ploteuclidean
+```
+
+
+
+
+Display in the same window the dendrograms with the results and use dendextend package to highlight the
+two clusters in each dendrogram. Set up the plots using par() function indicating a proper layout of the two
+plots and a proper fontsize of the labels.
+```{r}
+#I plot the figures within the same window with par()
+par(mfrow = c(2, 1))
+plot(dendeuclidean)
+plot(dendmanhattan)
+```
+
+
+
+
+3. Display again the heatmap, adding colored bars to:
+. the samples, showing the information about the case (i.e. Tumor or Normal) and the age, dividing the
+patients into two groups: those with age below 55 years old and those with age equal or above 55 years
+old;
+. the genes, showing the results of the two hierarchical clustering performed in point 2.
+```{r}
+#COLUMNS
+
+#I create the dataframe with the information on tissue type
+coldf <- as.data.frame(PRADsample[ , 2])
+rownames(coldf) <- PRADsample[ , 1]
+colnames(coldf) <- "tissue type"
+
+#I add the information on age
+coldf$age <- ifelse(PRADsample[ , 3] >= 55, ">= 55y", "< 55y")
+
+#ROWS
+
+#I create the dataframe with the information on manhattan classification
+rowdf <- as.data.frame(as.factor(cutree(hclustmanhattangenes, 2)))
+rownames(rowdf) <- rownames(PRADnormlimited)
+colnames(rowdf) <- "manhattan"
+
+#I add the information on 
+rowdf$euclidean <- as.factor(cutree(hclusteuclideangenes, 2))
+
+#Plot
+pheatmap(PRADnormlimited, annotation_col = coldf, annotation_row = rowdf)
+```
+
+
+
+
+Exercise 6
+----------
+
+Consider only the primary tumors in PRAD dataset (using the top 250 genes) and identify sub-groups of
+samples that might correspond to different cancer sub-types. 
+```{r}
+#I select the columns of the dataset that are primary tumor and check if the resulting database looks resonable
+samplesprimary <- PRADsample[PRADsample$Condition == "Primary Tumor" , 1]
+PRADprimary <- PRADnormlimited[ , colnames(PRADnormlimited) %in% samplesprimary]
+PRADprimary[1:10, 1:5]
+```
+
+
+
+
+A plot of the within groups sum of squares by number of clusters extracted can help to determine the appropriate number of clusters. Perform the hierarchical clustering per sample, using euclidean distance and single, average and complete linkage. Use the function cluster.stats() from fpc package and plot, for k=2:10, the within sum of squares (within.cluster.ss) and the average silhouette (avg.silwidth) into two separate plots but in the same window, highlighting the 3 linkage approaches differently. Which linkage method and number of clusters are the best choice?
+```{r}
+#I calculate euclidean distance between samples
+euclideansamples <- dist(t(PRADprimary))
+
+#I perform the hierarchical clustering using single, average, and complete linkage
+hclustsingle <- hclust(euclideansamples, method = "single")
+hclustaverage <- hclust(euclideansamples, method = "average")
+hclustcomplete <- hclust(euclideansamples, method = "complete")
+
+#I define the clusters stats for each group
+clustersinglek2 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 2))
+clustersinglek3 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 3))
+clustersinglek4 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 4))
+clustersinglek5 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 5))
+clustersinglek6 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 6))
+clustersinglek7 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 7))
+clustersinglek8 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 8))
+clustersinglek9 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 9))
+clustersinglek10 <- cluster.stats(euclideansamples, clustering = cutree(hclustsingle, 10))
+
+clusteraveragek2 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 2))
+clusteraveragek3 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 3))
+clusteraveragek4 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 4))
+clusteraveragek5 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 5))
+clusteraveragek6 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 6))
+clusteraveragek7 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 7))
+clusteraveragek8 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 8))
+clusteraveragek9 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 9))
+clusteraveragek10 <- cluster.stats(euclideansamples, clustering = cutree(hclustaverage, 10))
+
+clustercompletek2 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 2))
+clustercompletek3 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 3))
+clustercompletek4 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 4))
+clustercompletek5 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 5))
+clustercompletek6 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 6))
+clustercompletek7 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 7))
+clustercompletek8 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 8))
+clustercompletek9 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 9))
+clustercompletek10 <- cluster.stats(euclideansamples, clustering = cutree(hclustcomplete, 10))
+
+sumofsquaresdfsingle <- data.frame(2 : 10, c(clustersinglek2$within.cluster.ss, clustersinglek3$within.cluster.ss, clustersinglek4$within.cluster.ss, clustersinglek5$within.cluster.ss, clustersinglek6$within.cluster.ss, clustersinglek7$within.cluster.ss, clustersinglek8$within.cluster.ss, clustersinglek9$within.cluster.ss, clustersinglek10$within.cluster.ss))
+colnames(sumofsquaresdfsingle) <- c("clusters", "withinss")
+
+sumofsquaresdfaverage <- data.frame(2 : 10, c(clusteraveragek2$within.cluster.ss, clusteraveragek3$within.cluster.ss, clusteraveragek4$within.cluster.ss, clusteraveragek5$within.cluster.ss, clusteraveragek6$within.cluster.ss, clusteraveragek7$within.cluster.ss, clusteraveragek8$within.cluster.ss, clusteraveragek9$within.cluster.ss, clusteraveragek10$within.cluster.ss))
+colnames(sumofsquaresdfaverage) <- c("clusters", "withinss")
+
+sumofsquaresdfcomplete <- data.frame(2 : 10, c(clustercompletek2$within.cluster.ss, clustercompletek3$within.cluster.ss, clustercompletek4$within.cluster.ss, clustercompletek5$within.cluster.ss, clustercompletek6$within.cluster.ss, clustercompletek7$within.cluster.ss, clustercompletek8$within.cluster.ss, clustercompletek9$within.cluster.ss, clustercompletek10$within.cluster.ss))
+colnames(sumofsquaresdfcomplete) <- c("clusters", "withinss")
+
+
+ss <- ggplot(data = NULL, aes(x = clusters, y = withinss)) + 
+  geom_line(data = sumofsquaresdfsingle, color = "green", lwd = 1.5) +
+  geom_line(data = sumofsquaresdfcomplete, color = "red", lwd = 1.5) + 
+  geom_line(data = sumofsquaresdfaverage, color = "blue", lwd = 1.5) +
+  ylab("within-sum-of-squares")
+ss
+
+sildfsingle <- data.frame(2 : 10, c(clustersinglek2$avg.silwidth, clustersinglek3$avg.silwidth, clustersinglek4$avg.silwidth, clustersinglek5$avg.silwidth, clustersinglek6$avg.silwidth, clustersinglek7$avg.silwidth, clustersinglek8$avg.silwidth, clustersinglek9$avg.silwidth, clustersinglek10$avg.silwidth))
+colnames(sildfsingle) <- c("clusters", "silhouette")
+
+sildfaverage <- data.frame(2 : 10, c(clusteraveragek2$avg.silwidth, clusteraveragek3$avg.silwidth, clusteraveragek4$avg.silwidth, clusteraveragek5$avg.silwidth, clusteraveragek6$avg.silwidth, clusteraveragek7$avg.silwidth, clusteraveragek8$avg.silwidth, clusteraveragek9$avg.silwidth, clusteraveragek10$avg.silwidth))
+colnames(sildfaverage) <- c("clusters", "silhouette")
+
+sildfcomplete <- data.frame(2 : 10, c(clustercompletek2$avg.silwidth, clustercompletek3$avg.silwidth, clustercompletek4$avg.silwidth, clustercompletek5$avg.silwidth, clustercompletek6$avg.silwidth, clustercompletek7$avg.silwidth, clustercompletek8$avg.silwidth, clustercompletek9$avg.silwidth, clustercompletek10$avg.silwidth))
+colnames(sildfcomplete) <- c("clusters", "silhouette")
+
+sil <- ggplot(data = NULL, aes(x = clusters, y = silhouette)) + 
+  geom_line(data = sildfsingle, color = "green", lwd = 1.5) +
+  geom_line(data = sildfcomplete, color = "red", lwd = 1.5) + 
+  geom_line(data = sildfaverage, color = "blue", lwd = 1.5)
+sil
+
+#I am sure there are 3000 ways of doing this with less code but it is 11pm and I am exhausted
+
+#I plot the figures within the same window
+grid.arrange(ss, sil, ncol = 2)
+
+#And now to create the plots with a legend
+sumofsquaresdf <- rbind(sumofsquaresdfsingle, sumofsquaresdfaverage)
+sumofsquaresdf <- rbind(sumofsquaresdf, sumofsquaresdfcomplete)
+sumofsquaresdf$method <- c(rep("single", 9), rep("average", 9), rep("complete", 9))
+sumofsquaresdf
+
+ss2 <- ggplot(data = sumofsquaresdf, aes(x = clusters, y = withinss, group = method, color = method)) + 
+  geom_line(lwd = 1.5) +
+  ylab("within-sum-of-squares")
+ss2
+
+#And now to create the plots with a legend
+sildf <- rbind(sildfsingle, sildfaverage)
+sildf <- rbind(sildf, sildfcomplete)
+sildf$method <- c(rep("single", 9), rep("average", 9), rep("complete", 9))
+sildf
+
+sil2 <- ggplot(data = sildf, aes(x = clusters, y = silhouette, group = method, color = method)) + 
+  geom_line(lwd = 1.5) +
+  ylab("silhouette")
+sil2
+
+#I plot the figures within the same window
+grid.arrange(ss2, sil2, ncol = 2)
+
+## ANSWER 6
+#Based on the graphs, average with 4 clusters is optimal because it reaches a good compromise between low within sum of squares and high average silhouette
+```
+
+#------------
+#------------ Also k=2 is acceptable.
+#------------
+
+
+I spent a total of 47 hours working 5 days in this
+This means:
+I spent all my weekend on this
+I could not prepare my patients for clinics
+I had to move patients in my clinics to attend office hours
+I still have to complete notes on my clinics for more than 3 days now
+I was working every day very very late
+I could not attend the bioinformatics seminar on Tuesday because I was trying to figure out things with the TAs
+My research is essentially stopped while I work every week in these problem sets
+I cannot work on homework for other courses. I am falling so behind working in the MIMIC dataset for the HST953 course
+If the objective of the problem sets is to destroy the working schedule of your students you are doing it very well. If that is not your goal, I would ask you to reconsider the length and time requirements of these assignments. 
+If somebody asks me what I am learning with this, I would say I am learning something that I could have learned in 4-5 hours if problem sets were well designed. Struggling with code is good to a certain point, after some time, it is counterproductive. 
+Thank you
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

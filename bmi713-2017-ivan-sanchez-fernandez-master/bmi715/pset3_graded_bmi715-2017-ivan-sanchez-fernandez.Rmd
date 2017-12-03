@@ -1,0 +1,604 @@
+Homework 3 Ivan Sanchez Fernandez
+---------------------------------
+---------------------------------
+
+#Grading:
+Q1: 15/15
+Q2: 10/10
+Q3: 15/15
+Q5: 5/5
+Q6: 5/5
+Q7: 55/50
+
+105/100
+
+
+
+Question 1
+----------
+Question 1 Debugging
+Code for this problem is included below. If you are unable to get the debugger to function, see this page
+(https://support.rstudio.com/hc/en-us/articles/205612627-Debugging-with-RStudio). Note: feel free to skip
+and come back to this problem, as we will discuss debugging in R studio during the lab section.
+
+1.1 Fix loading the data
+Use the debugger to ensure the data is being loaded correctly.
+```{r}
+## ANSWER 1.1
+#Error in read_csv(fileName, sep = "\t") :
+#could not find function "read_csv"
+#Correct line to load the data would be:
+#gwasResults <- read.table(filename, sep = '\t', header = TRUE)
+#because the file is a text file separated with tabs, not a comma separated file
+#In addition, the first line of the file is a header with the variable names so it requires header = TRUE
+```
+
+
+
+
+1.2 Fix data analysis
+Use the debugger to fix each error in the code. For each error, report the debug message. Fix the code, and
+include it in your final submission along with the final plot.
+```{r}
+## ANSWER 1.2
+#Error in read.table(filename, sep = "\t", header = TRUE) :
+#  object 'filename' not found
+#Error in file(file, "rt") : cannot open the connection
+#In addition: Warning message:
+#In file(file, "rt") :
+#  cannot open file 'C:/Users/IvanSanchezFernandez/Documents/Height_HA_add_SV_chr1-3.txt': No such file or #directory
+#I added the correct path and name of the file 1-3 to 13
+#The correct line of code is:
+#gwasResults <- plotMultiFacetGgplot("D:\\BMI715 Computing Skills for Biomedical #Sciences\\Homework3\\Height_HA_add_SV_chr13.txt")
+
+
+
+
+##Error in sum(mafList) : invalid 'type' (list) of argument
+#We cannot sum a list, so I transformed to numeric here
+#minorAlleleTotalFreq <- sum(mafList)
+#The correct line of code would be:
+#minorAlleleTotalFreq <- sum(as.numeric(as.character(mafList)))
+
+
+
+
+#Cannot find function ggplot
+#Error in ggplot(fileName, aes(AleleFreq)) :
+#  could not find function "ggplot"
+#I added library(ggplot2)
+
+
+
+
+
+
+# Error: ggplot2 doesn't know how to deal with data of class character
+#gwasResults
+#filename is the path to the file gwasResults is the actual file
+#I changed the line to:
+#  plot <- ggplot(gwasResults, aes(AleleFreq)) + geom_point() + facet_grid(CHR ~ .) +
+#    xlab("Allele Freq") + ylab("Beta") + title("AF vs Effect size") + theme_classic()
+#  return(plot)
+
+
+#Error in title("AF vs Effect size") : plot.new has not been called yet
+#I changed title to ggtitle:
+#  plot <- ggplot(gwasResults, aes(AleleFreq)) + geom_point() + facet_grid(CHR ~ .) +
+#    xlab("Allele Freq") + ylab("Beta") + ggtitle("AF vs Effect size") + theme_classic()
+#  return(plot)
+
+
+#Error in FUN(X[[i]], ...) : object 'AleleFreq' not found
+#Typo with AleleFreq, changed to:
+#  plot <- ggplot(gwasResults, aes(AlleleFreq)) + geom_point() + facet_grid(CHR ~ .) +
+#    xlab("Allele Freq") + ylab("Beta") + ggtitle("AF vs Effect size") + theme_classic()
+#  return(plot)
+
+
+#Error: geom_point requires the following missing aesthetics: y
+#I added the y argument to the plot:
+#  plot <- ggplot(gwasResults, aes(AlleleFreq, beta)) + geom_point() + facet_grid(CHR ~ .) +
+#    xlab("Allele Freq") + ylab("Beta") + ggtitle("AF vs Effect size") + theme_classic()
+#  return(plot)
+
+
+#It creates an empty plot because there is no data called in
+#I changed:
+#mafStringList<-lapply(strsplit(row["ExAC_AMR_MAF"],","), strsplit,":")[1]
+#to:
+#mafStringList<-lapply(strsplit(row["ExAC_AMR_MAF"],","), strsplit,":")[[1]]
+#and it worked
+
+#FINAL CODE AND PLOT:
+library(ggplot2)
+
+getReferenceAlleleFrequency <- function(row){
+  mafStringList<-lapply(strsplit(row["ExAC_AMR_MAF"],","), strsplit,":")[[1]]
+  uniqueMafs <- unique(mafStringList)
+  mafList <- sapply(uniqueMafs,function(item,loci){
+    if(item[1] != loci['REF'] && item[1] != "-"){
+      return(item[2])
+    }else{
+      return(0)
+    }
+  },row)
+  minorAlleleTotalFreq <- sum(as.numeric(as.character(mafList)))
+  return (1-minorAlleleTotalFreq)
+}
+
+plotMultiFacetGgplot <- function(fileName){
+  #read in the file
+  gwasResults <- read.table(fileName, sep = '\t', header = TRUE)
+  #subset to only loci that have a MAF value
+  gwasResults <- subset(gwasResults,ExAC_AMR_MAF != "-")
+  gwasResults$AlleleFreq <- apply(gwasResults, MARGIN = 1,
+                                  FUN = getReferenceAlleleFrequency)
+  #split by chrom and plot AlleleFreq vs Beta
+  plot <- ggplot(gwasResults, aes(AlleleFreq, beta)) + geom_point() + facet_grid(CHR ~ .) +
+    xlab("Allele Freq") + ylab("Beta") + ggtitle("AF vs Effect size") + theme_classic()
+  return(plot)
+}
+gwasResults <- plotMultiFacetGgplot("D:\\BMI715 Computing Skills for Biomedical Sciences\\Homework3\\Height_HA_add_SV_chr13.txt")
+print(gwasResults)
+```
+
+
+
+
+Question 2
+----------
+Question 2 ggplot vs plot
+2.1.i Load the data
+Load the height GWAS results from the file supplied in your git directory (Height_HA_add_SV1-3.txt).
+Report the dimensions of this dataframe.
+```{r}
+## CODE 2.1.i
+
+#Load the data
+GWAS <- read.table("D:\\BMI715 Computing Skills for Biomedical Sciences\\Homework3\\Height_HA_add_SV_chr13.txt", header = TRUE, sep = "")
+
+#Dimensions of the database
+dim(GWAS)
+
+
+## ANSWER 2.1.i
+#The dataframe has 57312 rows and 10 columns
+```
+
+
+
+
+2.1.ii Clean the data
+Subset the data to only loci that are on chromosome 1.
+```{r}
+## CODE 2.1.ii
+
+#The dataframe has originally information from several chromosomes
+table(GWAS$CHR)
+
+#Subset the data to only loci that are in chromosome 1
+GWAS <- GWAS[GWAS$CHR == 1, ]
+
+#Check that after cleaning all data are now only from chromosome 1
+table(GWAS$CHR)
+
+## ANSWER 2.1.i
+#All entries in the dataframe are now from chromosome 1
+```
+
+
+
+
+2.2 Plot
+Plot position vs p-value using the plot() function. To improve this visualization, make the Y axis logarithmic,
+reverse the Y axis, and, play with the transparency of your data points.
+```{r}
+## CODE 2.2
+
+#Plot position versus p-value without transformations
+plot(GWAS$POS, GWAS$Pvalue, xlab = "Position", ylab = "p-value")
+
+#Plot position versus p-value with logarithmic y axis
+plot(GWAS$POS, GWAS$Pvalue, log = "y", xlab = "Position", ylab = "p-value, logarithmic scale")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis
+plot(GWAS$POS, GWAS$Pvalue, log = "y", ylim = c(max(GWAS$Pvalue, na.rm = TRUE), min(GWAS$Pvalue, na.rm = TRUE)), xlab = "Position", ylab = "p-value, logarithmic scale, inverted")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, partially transparent
+plot(GWAS$POS, GWAS$Pvalue, log = "y", ylim = c(max(GWAS$Pvalue, na.rm = TRUE), min(GWAS$Pvalue, na.rm = TRUE)), xlab = "Position", ylab = "p-value, logarithmic scale, inverted", col = adjustcolor("red", alpha = 0.5))
+
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, more transparent
+plot(GWAS$POS, GWAS$Pvalue, log = "y", ylim = c(max(GWAS$Pvalue, na.rm = TRUE), min(GWAS$Pvalue, na.rm = TRUE)), xlab = "Position", ylab = "p-value, logarithmic scale, inverted", col = adjustcolor("red", alpha = 0.2))
+
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, almost completely transparent
+plot(GWAS$POS, GWAS$Pvalue, log = "y", ylim = c(max(GWAS$Pvalue, na.rm = TRUE), min(GWAS$Pvalue, na.rm = TRUE)), xlab = "Position", ylab = "p-value, logarithmic scale, inverted", col = adjustcolor("red", alpha = 0.05))
+```
+
+
+
+
+2.3 Now with qplot
+Plot position vs p-value using the qplot() function, adding in additions from 2.2.
+```{r}
+## CODE 2.3
+
+#install.packages("ggplot2") [if not installed in the computer yet]
+library(ggplot2)
+
+#Plot position versus p-value without transformations
+qplot(POS, Pvalue, data = GWAS, xlab = "Position", ylab = "p-value")
+
+#Plot position versus p-value with logarithmic y axis
+qplot(POS, log(Pvalue), data = GWAS, xlab = "Position", ylab = "p-value, logarithmic scale")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis
+qplot(POS, log(Pvalue), data = GWAS, ylim = c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE)), xlab = "Position", ylab = "p-value, logarithmic scale, inverted")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, partially transparent
+qplot(POS, log(Pvalue), ylim = c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE)), data = GWAS, xlab = "Position", ylab = "p-value, logarithmic scale, inverted", col = "red", alpha = I(0.5))
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, more transparent
+qplot(POS, log(Pvalue), ylim = c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE)), data = GWAS, xlab = "Position", ylab = "p-value, logarithmic scale, inverted", col = "red", alpha = I(0.2))
+
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, almost completely transparent
+qplot(POS, log(Pvalue), ylim = c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE)), data = GWAS, xlab = "Position", ylab = "p-value, logarithmic scale, inverted", col = "red", alpha = I(0.05))
+```
+
+
+
+
+2.4 Now with ggplot
+Plot position vs p-value using the ggplot() function, adding in additions from 2.2.
+```{r}
+## CODE 2.4
+
+#Plot position versus p-value without transformations
+ggplot(data = GWAS, aes(x = POS, y = Pvalue)) + geom_point() + xlab("Position") + ylab("p-value")
+
+#Plot position versus p-value with logarithmic y axis
+ggplot(data = GWAS, aes(x = POS, y = log(Pvalue))) + geom_point() + xlab("Position") + ylab("p-value, logarithmic scale")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis
+ggplot(data = GWAS, aes(x = POS, y = log(Pvalue))) + geom_point() +
+  scale_y_reverse(c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE))) +
+  xlab("Position") + ylab("p-value, logarithmic scale")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, partially transparent
+ggplot(data = GWAS, aes(x = POS, y = log(Pvalue))) + geom_point(color = "red", alpha = 0.5) +
+  scale_y_reverse(c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE))) +
+  xlab("Position") + ylab("p-value, logarithmic scale")
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, more transparent
+ggplot(data = GWAS, aes(x = POS, y = log(Pvalue))) + geom_point(color = "red", alpha = 0.2) +
+  scale_y_reverse(c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE))) +
+  xlab("Position") + ylab("p-value, logarithmic scale")
+
+
+#Plot position versus p-value with logarithmic y axis and reverse the order of the y axis, red color, almost completely transparent
+ggplot(data = GWAS, aes(x = POS, y = log(Pvalue))) + geom_point(color = "red", alpha = 0.05) +
+  scale_y_reverse(c(max(log(GWAS$Pvalue), na.rm = TRUE), min(log(GWAS$Pvalue), na.rm = TRUE))) +
+  xlab("Position") + ylab("p-value, logarithmic scale")
+```
+
+
+
+
+Question 3
+----------
+Question 3 ggplot intro
+This problem will use data loaded for problem 2.
+2
+3.1 Basic plotting
+3.1.i Histogram
+Plot the distribution of betas for sites in the file. For this problem, use qplot() (less credit will be awarded
+for ggplot()).
+```{r}
+## CODE 3.1.i
+
+#Plot distribution of betas
+qplot(beta, data = GWAS, geom = "histogram", xlab = "Beta values", ylab = "Frequency")
+```
+
+
+
+
+3.1.ii QQ plot
+Create a qq plot for the p-values of the loci. For this problem, use ggplot() (less credit will be awarded for
+qplot()). What is the difference between the expected normal distribution and the distribution of p-values?
+```{r}
+## CODE 3.1.ii
+
+#QQplot for the p-values of the loci
+ggplot(data = GWAS, aes(sample= Pvalue)) + stat_qq() + annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = Inf, color = "red") + xlab("Theoretical quantiles") + ylab("Sample quantiles")
+
+## ANSWER 3.1.ii
+#The expected normal distribution would follow the red line in the graph. The distribution therefore departs markedly from a normal distribution
+```
+
+
+
+
+3.2 Extensions
+3.2.i Installation
+Many extensions exist for ggplot. Install the joyplot package.
+```{r}
+## CODE 3.2.i
+
+#Install joyplot
+#install.packages("ggridges")
+library(ggridges)
+```
+
+
+
+
+3.2.ii Use it!
+Use geom_joy() (geom_geom_density_ridges()) to plot the distribution of locations on each of the 3
+chromosomes in the file. On the Y-axis plot the chromosome number; on the X-axis, plot the position.
+```{r}
+## CODE 3.2.ii
+
+#Load the data again to have all chromosomes in the file
+GWAS <- read.table("D:\\BMI715 Computing Skills for Biomedical Sciences\\Homework3\\Height_HA_add_SV_chr13.txt", header = TRUE, sep = "")
+
+#Plot the distribution of locations on each of the 3 chromosomes in the file
+ggplot(data = GWAS, aes(POS, as.factor(CHR))) + geom_density_ridges()  + xlab("Position") + ylab("Chromosome")
+```
+
+
+
+
+3.3 Themes
+Re-make the plot from 3.3 using a different theme.
+```{r}
+## CODE 3.3
+
+#Use theme dark
+ggplot(data = GWAS, aes(POS, as.factor(CHR))) + geom_density_ridges()  + xlab("Position") + ylab("Chromosome") + theme_dark()
+
+#Use theme minimal
+ggplot(data = GWAS, aes(POS, as.factor(CHR))) + geom_density_ridges()  + xlab("Position") + ylab("Chromosome") + theme_minimal()
+
+#Use theme linedraw
+ggplot(data = GWAS, aes(POS, as.factor(CHR))) + geom_density_ridges()  + xlab("Position") + ylab("Chromosome") + theme_linedraw()
+
+#Use theme bw
+ggplot(data = GWAS, aes(POS, as.factor(CHR))) + geom_density_ridges()  + xlab("Position") + ylab("Chromosome") + theme_bw()
+```
+
+
+
+
+3.4 Other cool stuff
+There are many types of plots out there! Plot something different and interesting using the data provided.
+You can find inspiration using http://www.r-graph-gallery.com/portfolio/ggplot2-package/ or if you're
+particularly uninspired, create a violin plot of the Standard error distributions for the loci from each of the
+three chromosomes.
+```{r}
+## CODE 3.4
+
+#Violin plot of the standard error distributions for the loci of each of the three chromosomes
+ggplot(data = GWAS, aes(x = as.factor(CHR), y = se, fill = as.factor(CHR))) + geom_violin() + xlab("Chromosome") + ylab("Standard error") + labs(fill = "Chromosome")
+
+#Number of A, C, G, and T in each chromosome
+ggplot(data = GWAS, aes(x = as.factor(CHR), fill = REF)) + geom_bar() +
+  xlab("Chromosome") + ylab("Chromosome")
+```
+
+
+
+
+Question 4
+----------
+Question 4 ggplot, for real
+Overview
+In "Classification of common human diseases derived from shared genetic and environmental determinants"
+by Wang et. al. in Nature Genetics (http://www.nature.com/ng/journal/v49/n9/full/ng.3931.html) Figure
+1e is poorly done. For this problem you will be recreating figure 1e, but making it better.
+4.1 Identifying Issues
+Briefly state what some of the issues with Figure 1e are.
+```{r}
+## ANSWER 4.1
+
+#The issues with figure 1e include:
+#Too many categories
+#Too many labels
+#Way too many colors (far more than the recommended 8-12) to make them distinguishable from each other
+#Some of the diseases appear as acronyms that are not spelled out directly in the figure legend, but in Supplementary Tables
+#Numbers appear embedded within the color, which for some colors makes it difficult to distinguish the number.
+#Heritability estimates that appear to be measured for the first time are marked with an asterisk adding complexity to the already complex figure and making it difficult to recognize when the category is in the inner part of the spiral
+#Display in a spiral plot that makes it difficult to compare values and proportions
+#Almost impossibility of recognizing the inner part of the spiral. In the detailed figure of the inner part it is still difficult to recognize all categories and colors
+# The heritability values are displayed in decreasing order, but the size of each item is not proportional to the heritability component
+```
+
+
+
+
+4.2 Locating Data
+Read the paper at the link above then locate and download to your computer the neccesary data files that
+you will need to recreate the figure in the supplement. Note that you will have to use your HarvardKey to
+access the paper as it is behind a paywall. Note that you may need to look for the neccesary data in more
+than one file.
+```{r}
+## ANSWER 4.2
+
+#The necessary data are in Supplementary Tables 1 and 2. Both files are in .csv format
+```
+
+
+
+
+4.3 Loading Data
+Using techniques that you learned last week, load the neccesary data to recreate the figure into R. We will
+grade 4.2 based on the filenames in your included code to determine whether or not you used the correct data.
+```{r}
+## CODE 4.3
+
+#Load the databases
+setwd("D:\\BMI715 Computing Skills for Biomedical Sciences\\Homework3\\")
+getwd()
+ST1 <- read.csv("ng.3931-S2.csv", header = TRUE, skip = 1)
+ST2 <- read.csv("ng.3931-S3.csv", header = TRUE, skip = 1)
+
+```
+
+
+
+
+4.4 Merging Data
+Merge the data into one data frame if neccesary. (Hint: It may be worthwhile to look up R packages that are
+part of the "Tidyverse" via Google and Stack Overflow to make this task easier).
+```{r}
+## CODE 4.4
+
+#Install tidyverse
+#install.packages("tidyverse")
+library(tidyverse)
+
+#Merge the databases
+heritability <- inner_join(ST1, ST2)
+```
+
+
+
+
+4.5 Create A Bar Chart
+Rather than a spiral monstrosity, create a standard bar chart with error bars of the data (ignoring color for
+now).
+```{r}
+## CODE 4.5
+
+#Simple bar chart
+ggplot(data = heritability) + geom_bar(mapping = aes(x = Acronym, y = h2), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 2))
+```
+
+
+
+
+4.6 Colors!
+Apply the same color mapping/labeling scheme that the original Figure 1e does to your bar chart.
+```{r}
+## CODE 4.6
+
+#Color bar chart
+ggplot(data = heritability) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = System), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 2))
+```
+
+
+
+
+4.7 Readability
+This bar chart, while no longer spiral, is likely still not that readable. Break the bar chart into two or more
+rows so that it is actually more readable.
+```{r}
+## CODE 4.7
+
+#install.packages("grid")
+library(grid)
+vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
+
+
+#Color bar chart by organ systems
+heritability1 <- filter(heritability, System == "CNS" | System == "Development" | System == "Digestive" |
+                          System == "Endocrine" | System == "Hematologic" | System == "Hepatic")
+plot1 <- ggplot(data = heritability1) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = System), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 4))
+
+heritability2 <- filter(heritability, System == "Immune" | System == "Infectious Disease" | System == "Integumentary" | System == "Metabolic" | System == "Musculoskeletal" | System == "Neoplastic Process")
+plot2 <- ggplot(data = heritability2) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = System), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 4))
+
+heritability3 <- filter(heritability, System == "Neuropsychiatric" | System == "Ophthalmological" | System == "Otic" | System == "PNS" | System == "Reproductive" | System == "Respiratory" | System == "Urinary")
+plot3 <- ggplot(data = heritability3) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = System), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 4))
+
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(3, 1)))
+print(plot1, vp = vplayout(1, 1))
+print(plot2, vp = vplayout(2, 1))
+print(plot3, vp = vplayout(3, 1))
+
+
+#Other option is to layer by categories (as there are so many systems, best to divide in 3 rows for clarity)
+vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
+
+gg1 <- ggplot(data = heritability1) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = forcats::fct_rev(System)), stat="identity") + theme(axis.text = element_text(angle = 90, size = 3))
+gg1 <- gg1 + facet_wrap(~System)
+
+gg2 <- ggplot(data = heritability2) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = forcats::fct_rev(System)), stat="identity") + theme(axis.text = element_text(angle = 90, size = 3))
+gg2 <- gg2 + facet_wrap(~System)
+
+gg3 <- ggplot(data = heritability2) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = forcats::fct_rev(System)), stat="identity") + theme(axis.text = element_text(angle = 90, size = 3))
+gg3 <- gg3 + facet_wrap(~System)
+
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(3, 1)))
+print(gg1, vp = vplayout(1, 1))
+print(gg2, vp = vplayout(2, 1))
+print(gg3, vp = vplayout(3, 1))
+```
+
+
+
+
+4.8 Extra Credit 1
+Recreate 4.6 as a dot plot instead of a bar plot.
+```{r}
+## CODE 4.8
+
+#Color dotplot chart
+ggplot(data = heritability) + geom_dotplot(mapping = aes(x = Acronym, y = h2, fill = System), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 2))
+```
+
+
+
+
+4.9 Extra Credit 2
+Make 4.6 interactive so that users can hover and click on the chart. It is up to you to figure out how to do
+this.
+```{r}
+## CODE 4.9
+
+#install.packages("plotly")
+library(plotly)
+
+#Color bar chart
+ggplotly(ggplot(data = heritability) + geom_bar(mapping = aes(x = Acronym, y = h2, fill = System), stat="identity") +
+  geom_errorbar(aes(x = Acronym, ymin = h2 - h2.SD, ymax = h2 + h2.SD)) + xlab("Disease") + ylab("Heritability values") + theme(axis.text = element_text(angle = 90, size = 2)))
+```
+
+
+
+
+Question 5
+----------
+Question 5
+How long did this problem set take to complete?
+Please report this number in hours.
+```{r}
+## ANSWER 5
+
+#23 hours
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

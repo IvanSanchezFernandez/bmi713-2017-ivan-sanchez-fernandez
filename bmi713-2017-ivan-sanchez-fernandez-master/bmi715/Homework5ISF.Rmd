@@ -1,0 +1,1133 @@
+HOMEWORK 5 Ivan Sanchez Fernandez
+---------------------------------
+---------------------------------
+
+
+
+
+Instructions:
+You are to complete and turn in this problem set by Thursday, October 5 at 9:59am (immediately before
+class). Problem sets may be turned in within 24 hours late at a 20% grading penalty. The final problem
+will show you how to turn in your problem set. All code should be included in the submission, and should
+be saved in an r markdown file. Any answers should be included as comments immediately below the code
+responsible, and should be labelled as follows:
+# CODE 2a
+Put your code here
+and if you need another line, put it here,
+and also here!
+# ANSWER 2a
+# Put your answer for 2a here
+If you have any questions, please post on the piazza site. This problem set was prepared by Eric Bartell,
+Jacob Luber and Tiziana Sanavia, so they will be most prepared to answer questions. Point values are
+relative, and will be scaled to 100%.
+Data are available in the following link, in the pset5 folder: https://www.dropbox.com/sh/rlj714terrzakc7/
+AACELk752w4GPAsJXYi8Vbb5a?dl=0
+
+
+
+
+Question 1
+----------
+
+Flight Paths
+For this question, we will be using flightInfo.tsv to consider a simple graph.
+
+1.1 Pull in data (1 point)
+Get the data in a usable format. For this problem you should be using the igraph (http://igraph.org/r/)
+package. Our small file consists of city names, and flight costs and flight times between the cities. Each row
+represents an undirected edge between cities (nodes). First load the file as a dataframe, and then use the
+igraph method graph_from_data_frame(flight info dataframe) to obtain an object.
+Assume that the cost and time is the same to fly in both directions; as such this should be an undirected
+graph.
+Using the class() function, what is our loaded data's type?
+```{r}
+## CODE 1.1
+
+#I load the database
+flights <- read.table("F:\\BMI715 Computing Skills for Biomedical Sciences\\Homework5\\pset5\\flightInfo.tsv", header = TRUE, sep = "\t")
+
+#I check that it is a dataframe
+class(flights)
+
+#install.packages("igraph")
+library(igraph)
+
+#I create a graph file
+graphflights <- graph_from_data_frame(flights, directed = FALSE)
+
+#and check that it is and igraph object
+class(graphflights)
+
+## ANSWER 1.1
+#The uploaded file is of class igraph
+```
+
+
+
+
+1.2 Basic plotting (2 points)
+Once you have loaded in the data, plot it using plot(). What is the Node Degree of New York? Your plot
+should look something like this:
+```{r}
+## CODE 1.2
+
+#I plot the graph
+plot(graphflights)
+
+#I check the degree of each node
+degree(graphflights)
+
+## ANSWER 1.2
+#Based on the graph and the output from the degree() function, the node degree of New York is 3
+```
+
+
+
+
+1.3 Plot using ggraph (3 points)
+igraph interacts well with the ggplot addon ggraph. Install and load it, and then use ggraph() and its related
+functions to plot the same graph as part 1.2. Hint: remember, ggrap() (like ggplot()) instantiates the plot,
+but you still need to add features you want to include (like nodes and edges)! Make sure you label each node
+with it's name! It should look something like this:
+```{r}
+## CODE 1.3
+
+#install.packages("ggraph")
+library(ggraph)
+
+#I plot the basic graph
+ggraph(graphflights) + geom_node_point() + geom_edge_link()
+
+#I use the names in the vertex attributes as vertex labels
+ggraph(graphflights) + geom_node_point() + geom_edge_link() + geom_node_text(mapping = aes(label = vertex_attr(graphflights)$name), repel = TRUE)
+
+#And now without points in the nodes and with no separation of the labels from the nodes to make it similar to the solution in the exercise
+ggraph(graphflights) + geom_edge_link() + geom_node_text(mapping = aes(label = vertex_attr(graphflights)$name), repel = FALSE)
+```
+
+
+
+
+1.4 Add information to the plot (3 points)
+Re-plot the graph from 1.3 (using ggraph and related functions); label each edge with the cost of that
+edge, and change the transparency of the edge to correlate with the time for each trip (e.g. transparency =
+Time/max(Times)).
+```{r}
+## CODE 1.4
+
+#I create the variable proportional time flight as the flight duration divided by the maximum flight duration
+proportionaltimeflight <- edge_attr(graphflights)$Time / max(edge_attr(graphflights)$Time)
+
+#I graph the results
+ggraph(graphflights) + 
+  geom_edge_link(mapping = c(aes(label = edge_attr(graphflights)$Cost), aes(alpha = proportionaltimeflight))) + 
+  geom_node_text(mapping = aes(label = vertex_attr(graphflights)$name), repel = FALSE)
+```
+
+
+
+
+Question 2
+----------
+
+Gene Networks
+In this question, we are going to create a gene network based on the pairwise correlation of 50 genes measured
+using their expression profiles across 50 samples.
+For more reading on correlation analysis/co-expression networks, Nils' paper (https://paperpile.com/app/p/
+7eb28d4c-c172-0f88-811e-f443a9f05fad) contains a short section entitled "Network clustering and correlation
+networks."
+
+2.1 Calculate a distance metric (2 points)
+Read the file Network_Expression_Data.txt. You should be able to find this file in the dropbox folder
+(https://www.dropbox.com/sh/rlj714terrzakc7/AACELk752w4GPAsJXYi8Vbb5a?
+
+```{r}
+## CODE 2.1
+
+#I load the database
+geneData <- read.table("F:\\BMI715 Computing Skills for Biomedical Sciences\\Homework5\\pset5\\Network_Expression_Data.txt", header = TRUE, sep = "\t")
+
+#I check that it is a dataframe
+class(geneData)
+
+#Dimensions
+dim(geneData)
+
+## ANSWER 2.1
+#The dataframe has 50 rows and 50 columns
+```
+
+
+
+
+Calculate a gene-gene distance matrix where we define Distance = 1 - abs(correlation(GeneA, GeneB)). Use
+spearman correlation (cor(x , method="spearman")). This distance matrix will be the adjacency matrix
+for our network, which is a square matrix used to represent a finite graph. The elements of the matrix indicate
+whether pairs of vertices are adjacent or not in the graph. NOTE: you need to transpose your data.
+```{r}
+## CODE 2.1
+
+#I create the gene correlation matrix
+geneDistances <- 1 - abs(cor(t(geneData), method = "spearman"))
+
+#I check that it looks more or less as expected
+geneDistances[1:10, 1:5]
+
+#I check that dimensions are 50 rows and 50 columns
+dim(geneDistances)
+```
+
+
+
+
+2.2 Describe the data (2 points)
+How many vertices are in the dataset defined by our distance matrix? How many edges? What is each
+vertex's degree? Assume no self-loops.
+```{r}
+## CODE 2.2
+
+#I check that dimensions are 50 rows and 50 columns
+dim(geneDistances)
+
+#I check the structure of the matrix
+geneDistances
+
+#I check that correlation = 0 only occurs in the 50 diagonal lines
+table(geneDistances == 0)
+
+## ANSWER 2.2
+#There are 50 vertices (nodes) in the matrix corresponding to each gene and each of the columns (or rows)
+#Each node is connected to 49 nodes, so the degree of each node is 49
+#As each node is connected to 49 nodes and each connection is undirected, the total number of edges would be
+# n * (n - 1) / 2
+49 * 50 / 2
+# 1225 edges
+```
+
+
+
+
+2.3 Make a more useful dataset (6 point)
+First, load the graph using igraph package and create the network using the command of the package specific
+for the adjacency matrix. Load the network as undirected, exclude the elements along the diagonal in
+order to avoid self-loops and keep the weights defined by your correlation-based distance. Up to now, we
+are considering all genes as connected; this is not a very useful dataset. If we set a threshold based on the
+distance defined above, we can subset our edges to get more information out of our graph. Create a threshold
+on distance: if distance is greater than 0.2, remove the edge using the command delete.edges. Remove the
+nodes that do not share any edges using the command delete.vertices.
+```{r}
+## CODE 2.3
+
+#I create the igraph object
+graphgenes <- graph_from_adjacency_matrix(geneDistances, mode = "undirected", diag = FALSE, weight = TRUE)
+
+#I check that it is an igraph object
+class(graphgenes)
+
+#I delete edges with distance greater than 0.2
+graphgenesclean <- delete.edges(graphgenes, which(E(graphgenes)$weight > 0.2))
+
+#I delete nodes with no connections (degree = 0)
+graphgenesclean <- delete.vertices(graphgenesclean, which(degree(graphgenesclean) == 0))
+```
+
+
+
+
+Display the final graph using ggraphs() in two ways:
+1. We are going to graph our genes. We will: color edges by their distance, label our nodes, annotate our
+nodes by their degree, and space our nodes such that thee graph is readable.
+You only need to turn in the final graph; however, these steps should facilitate your graph creation process.
+First, we instantiate our graph with the layout "Kamada-Kawai", and add edges that are colored by Distance
+between edges. You may want to use the E() function to get access to edge distances.
+```{r}
+## CODE 2.3
+
+#I define the variable Distance
+Distance <- E(graphgenesclean)$weight
+
+#I instantiate the graph with the layout Kamada-Kawai and add edges colored by distance
+ggraph(graphgenesclean, layout = "kk") + 
+  geom_edge_link(mapping = aes(color = Distance)) + 
+  geom_node_text(label = "")
+```
+
+
+
+
+Now, we want to control the edge coloring: use scale_edge_colour_gradient() with "red" for low
+distances and "yellow" for high distances.
+```{r}
+## CODE 2.3
+
+#I color the edges with red for low distances and yellow for high distances
+ggraph(graphgenesclean, layout = "kk") + 
+  geom_edge_link(mapping = aes(color = Distance)) + 
+  geom_node_text(label = "") +
+  scale_edge_colour_gradient(low = "red", high = "yellow")
+```
+
+
+
+
+Awesome. Next we want to label each of our nodes with the Name of the gene. Consider
+geom_node_text(); use the font "Courier", fontface "bold", and make sure to use repel=T.
+```{r}
+## CODE 2.3
+
+#I label the nodes with the name of the gene, use Courier (mono in Windows) and bold, and use repel
+ggraph(graphgenesclean, layout = "kk") + 
+  geom_edge_link(mapping = aes(color = Distance)) + 
+  geom_node_text(mapping = aes(label = vertex_attr(graphgenesclean)$name), family = "mono", fontface = "bold", repel = TRUE) +
+  scale_edge_colour_gradient(low = "red", high = "yellow")
+#Apparently "mono" is how "Courier" appears in Windows
+```
+
+
+
+
+Finally, we would like to characterize our nodes based on whether their degree is >10 or <10. You may want
+to create an object that signifies which category your node falls into. Also, use theme_void() to remove the
+background.
+```{r}
+## CODE 2.3
+
+#I create Node_degree
+Node_degree <- ifelse(degree(graphgenesclean) > 10, ">10", "<=10")
+
+#I add the degree as a binary variable
+ggraph(graphgenesclean, layout = "kk") + 
+  geom_edge_link(mapping = aes(color = Distance)) + 
+  geom_node_text(mapping = aes(label = vertex_attr(graphgenesclean)$name), family = "mono", fontface = "bold", repel = TRUE) +
+  scale_edge_colour_gradient(low = "red", high = "yellow") +
+  geom_node_point(mapping = aes(color = Node_degree)) +
+  theme_void()
+
+#Final graph 1
+finalgraph1 <- ggraph(graphgenesclean, layout = "kk") + 
+  geom_edge_link(mapping = aes(color = Distance)) + 
+  geom_node_text(mapping = aes(label = vertex_attr(graphgenesclean)$name), family = "mono", fontface = "bold", repel = TRUE) +
+  scale_edge_colour_gradient(low = "red", high = "yellow") +
+  geom_node_point(mapping = aes(color = Node_degree)) +
+  theme_void()
+finalgraph1
+```
+
+
+
+
+Well done! We've plotted genes by their similarity to each other!
+2. repeat the point 1 by changing the format to a circular graph as displayed in the figure. Use this link
+as reference: https://cran.r-project.org/web/packages/ggraph/vignettes/Edges.html
+```{r}
+## CODE 2.3
+
+#Final graph 2
+finalgraph2 <- ggraph(graphgenesclean, layout = "linear", circular = TRUE) + 
+  geom_edge_arc(mapping = aes(color = Distance)) + 
+  geom_node_text(mapping = aes(label = vertex_attr(graphgenesclean)$name), family = "mono", fontface = "bold", repel = TRUE) +
+  scale_edge_colour_gradient(low = "red", high = "yellow") +
+  geom_node_point(mapping = aes(color = Node_degree)) +
+  theme_void()
+finalgraph2
+```
+
+
+
+
+2.4 Describe the data, part 2 (2 points)
+Plot the distribution of node degree in our new graph. How many edges are there now? Which gene(s) are
+the most connected?
+```{r}
+## CODE 2.4
+
+#I create an histogram of node degree
+hist(degree(graphgenesclean), main = "Degree distribution", xlab = "Degree")
+
+#The number of edges in this undirected graph is:
+sum(degree(graphgenesclean)) / 2
+
+#The most connected genes are:
+sort(degree(graphgenesclean), decreasing = TRUE)
+
+## ANSWER 2.4
+#There are 219 edges
+#The most connected genes (in decreasing order) are RND2, QPRT, CAV2, DOK4, DMC1, ... (full list with specific degrees above)
+```
+
+
+
+
+2.5 Shortest path (2 points)
+For the following pair of genes: are the genes connected? What is the shortest path between the two?
+Genes CLU and LRFN1
+```{r}
+## CODE 2.5
+
+#I check if CLU and LRFN1 are connected
+E(graphgenesclean)
+
+#I evaluate the shortest path
+path <- get.shortest.paths(graphgenesclean, from = V(graphgenesclean)[name == "CLU"], to = V(graphgenesclean)[name == "LRFN1"], output = "both")
+path
+
+## ANSWER 2.5
+#The genes are not connected (considering a threshold of more than 0.2 as above) and the shortest path is through CLU --> DOK4 --> ARHGEF26 --> LRFN1 or the other way around
+```
+
+
+
+
+2.6 (2 points)
+Re-draw the graph with any path(s) found in 2.3.1, highlighting the path in "red", keeping the other edges in
+"lightgrey". You should consider using scale_edge_colour_manual().
+```{r}
+## CODE 2.6
+basecolor <- rep("basepath", ecount(graphgenesclean))
+basecolor[unlist(path$epath)] <- "specialpath"
+
+
+#I check if CLU and LRFN1 are connected
+ggraph(graphgenesclean, layout = "kk") + 
+  geom_edge_link(aes(color = basecolor)) + 
+  scale_edge_colour_manual(values = c("lightgrey", "red")) +
+  geom_node_text(mapping = aes(label = vertex_attr(graphgenesclean)$name), family = "mono", fontface = "bold", repel = TRUE) +
+  geom_node_point(mapping = aes(color = Node_degree)) +
+  theme_void()
+```
+
+
+
+
+2.7 Heatmap (4 points)
+Create a matrix where each contains the length of the shortest path between the two corresponding vertices.
+Plot that matrix as a heatmap.
+```{r}
+## CODE 2.7
+
+#I create the matrix of shorther paths for all nodes
+shorthestpaths <- shortest.paths(graphgenesclean, v = V(graphgenesclean), to = V(graphgenesclean))
+
+#And I check that it looks reasonable
+shorthestpaths[1 : 10, 1 : 5]
+
+#install.packages("pheatmap")
+library(pheatmap)
+pheatmap(shorthestpaths)
+```
+
+
+
+
+Question 3
+----------
+
+Orchestra
+Orchestra will be covered in lab on Tuesday; materials are available online if you would like to get started before
+then! The following questions should be performed in the command line/terminal. Please include all answers
+from the command line in your normal solutions file when an output is the answer. Note: if you are using
+Windows, command line does not contain the necessary commands. Please either use Bash (included on windows
+10: https://www.howtogeek.com/249966/how-to-install-and-use-the-linux-bash-shell-on-windows-10/)
+or install gitbash (https://git-scm.com/downloads) and use this to complete your homework.
+
+3.1: Starting with the shell (2 points)
+1. Login to O2 and start an interactive session.
+
+[is79@login03 ~]$ srun -p interactive --pty --mem 8000 -t 0-12:00 /bin/bash
+
+srun: job 3746205 queued and waiting for resources
+
+srun: job 3746205 has been allocated resources
+
+[is79@compute-a-16-70 ~]$ cp -r /n/groups/hbctraining/unix-intro/ .
+
+
+
+
+2. Change directories into unix-intro.
+
+[is79@compute-a-16-70 ~]$ cd unix-intro
+
+
+
+
+3. List the contents of the other directory. How many files are in the folder?
+
+[is79@compute-a-16-70 unix-intro]$ ls -l \other
+
+total 128
+-rw-rw-r-- 1 is79 is79   93 Oct  4 10:24 Mov10_rnaseq_metadata.txt
+
+-rw-r--r-- 1 is79 is79 1057 Oct  4 10:24 sequences.fa
+
+-rw-rw-r-- 1 is79 is79  199 Oct  4 10:24 trimmomatic-multithreaded.sh
+
+-rw-rw-r-- 1 is79 is79  585 Oct  4 10:24 trimmomatic-on-input-file.sh
+
+-rw-r--r-- 1 is79 is79 1133 Oct  4 10:24 trimmomatic-serial.lsf
+
+There are a total of 5 files in the folder
+
+
+
+
+4. Make a copy of the sequences.fa file and put it in the other folder. Name this file sequences-copy.fa.
+
+[is79@compute-a-16-70 unix-intro]$ cp other/sequences.fa other/sequences-copy.fa
+
+I make sure is it is in the other folder
+
+[is79@compute-a-16-70 unix-intro]$ ls -l other
+
+-rw-rw-r-- 1 is79 is79   93 Oct  4 10:24 Mov10_rnaseq_metadata.txt
+
+-rw-r--r-- 1 is79 is79 1057 Oct  4 10:32 sequences-copy.fa
+
+-rw-r--r-- 1 is79 is79 1057 Oct  4 10:24 sequences.fa
+
+-rw-rw-r-- 1 is79 is79  199 Oct  4 10:24 trimmomatic-multithreaded.sh
+
+-rw-rw-r-- 1 is79 is79  585 Oct  4 10:24 trimmomatic-on-input-file.sh
+
+-rw-r--r-- 1 is79 is79 1133 Oct  4 10:24 trimmomatic-serial.lsf
+
+
+
+
+3.2: Paths and shortcuts (4 points + 1 point extra credit)
+5. Change directories into other. List all the Mov10 FASTQ files in raw_fastq from your current directory
+without changing directories.
+
+[is79@compute-a-16-70 unix-intro]$ cd other
+
+[is79@compute-a-16-70 other]$ ls -l ../raw_fastq/Mov10*
+
+-rw-rw-r-- 1 is79 is79 75706556 Oct  4 10:24 ../raw_fastq/Mov10_oe_1.subset.fq
+
+-rw-rw-r-- 1 is79 is79 68676755 Oct  4 10:24 ../raw_fastq/Mov10_oe_2.subset.fq
+
+-rw-rw-r-- 1 is79 is79 42742047 Oct  4 10:24 ../raw_fastq/Mov10_oe_3.subset.fq
+
+
+
+
+6. Do each of the following using a single ls command without navigating to a different directory. HINT:
+You will want to use a wildcard here.
+. List all of the files in /bin that start with the letter 'c'
+
+[is79@compute-a-16-70 other]$ ls /bin/c*
+
+/bin/c++              /bin/c++filt      /bin/cifsiostat  /bin/coredumpctl
+/bin/c2ph             /bin/chacl        /bin/cksum       /bin/cp
+/bin/c89              /bin/chage        /bin/clear       /bin/cpio
+/bin/c99              /bin/chardetect   /bin/cmp         /bin/cpp
+/bin/cairo-sphinx     /bin/chattr       /bin/cmsutil     /bin/cpupower
+/bin/cal              /bin/chcat        /bin/co          /bin/crlutil
+/bin/ca-legacy        /bin/chcon        /bin/col         /bin/crontab
+/bin/cancel           /bin/checkmodule  /bin/colcrt      /bin/crontab.ssh
+/bin/cancel.cups      /bin/checkpolicy  /bin/colrm       /bin/csh
+/bin/captoinfo        /bin/chfn         /bin/column      /bin/csplit
+/bin/cat              /bin/chgrp        /bin/comm        /bin/csslint-0.6
+/bin/catchsegv        /bin/chmod        /bin/command     /bin/curl
+/bin/catman           /bin/chown        /bin/compare     /bin/curl-config
+/bin/cc               /bin/chrt         /bin/compile_et  /bin/cut
+/bin/cd               /bin/chsh         /bin/composite   /bin/cvt
+/bin/centrino-decode  /bin/chvt         /bin/conjure
+/bin/certutil         /bin/ci           /bin/convert
+
+
+
+
+. List all of the files in /bin that contain the letter 'a'
+
+
+#Here it should say [is79@compute-a-16-70 other]$ ls /bin/*a* (with an asterisk before and after a and o)
+#I do not know why *a* (with an asterisk before and after a and o) gets printed as a (without asterisk) in the HTML
+
+[is79@compute-a-16-70 other]$ ls /bin/*a*
+
+/bin/a2p                          /bin/nl-addr-delete
+/bin/aclocal                      /bin/nl-addr-list
+/bin/aclocal-1.13                 /bin/nl-class-add
+/bin/addr2line                    /bin/nl-class-delete
+/bin/alias                        /bin/nl-classid-lookup
+/bin/animate                      /bin/nl-class-list
+/bin/apropos                      /bin/nl-cls-add
+/bin/ar                           /bin/nl-link-enslave
+/bin/arch                         /bin/nl-link-ifindex2name
+/bin/as                           /bin/nl-link-name2ifindex
+/bin/aserver                      /bin/nl-link-release
+/bin/at                           /bin/nl-link-stats
+/bin/atq                          /bin/nl-list-caches
+/bin/atrm                         /bin/nl-neigh-add
+/bin/audit2allow                  /bin/nl-qdisc-add
+/bin/audit2why                    /bin/nl-route-add
+/bin/aulast                       /bin/nl-util-addr
+/bin/aulastlog                    /bin/nmap
+/bin/ausyscall                    /bin/nmtui-hostname
+/bin/autoconf                     /bin/nsupdate
+/bin/autoexpect                   /bin/ntpstat
+/bin/autoheader                   /bin/package-cleanup
+/bin/autom4te                     /bin/pango-querymodules-64
+/bin/automake                     /bin/pango-view
+/bin/automake-1.13                /bin/passmass
+/bin/autoreconf                   /bin/passwd
+/bin/autoscan                     /bin/paste
+/bin/autoupdate                   /bin/patch
+/bin/auvirt                       /bin/pathchk
+/bin/awk                          /bin/pax
+/bin/base64                       /bin/perlthanks
+/bin/basename                     /bin/pf2afm
+/bin/bash                         /bin/pfbtopfa
+/bin/bashbug                      /bin/pgawk
+/bin/bashbug-64                   /bin/pidstat
+/bin/batch                        /bin/pkaction
+/bin/bdftruncate                  /bin/pkla-admin-identities
+/bin/bond2team                    /bin/pkla-check-authorization
+/bin/bzcat                        /bin/pkttyagent
+/bin/cairo-sphinx                 /bin/plot-llstat
+/bin/cal                          /bin/pmap
+/bin/ca-legacy                    /bin/pod2man
+/bin/cancel                       /bin/pod2usage
+/bin/cancel.cups                  /bin/printafm
+/bin/captoinfo                    /bin/prtstat
+/bin/cat                          /bin/ps2ascii
+/bin/catchsegv                    /bin/psfaddtable
+/bin/catman                       /bin/psfgettable
+/bin/chacl                        /bin/psfstriptable
+/bin/chage                        /bin/psfxtable
+/bin/chardetect                   /bin/pstack
+/bin/chattr                       /bin/pwmake
+/bin/chcat                        /bin/qalter
+/bin/cifsiostat                   /bin/qstat
+/bin/clear                        /bin/quota
+/bin/command                      /bin/quotasync
+/bin/compare                      /bin/ranlib
+/bin/crontab                      /bin/raw
+/bin/crontab.ssh                  /bin/rcsclean
+/bin/date                         /bin/read
+/bin/db_archive                   /bin/readelf
+/bin/db_deadlock                  /bin/readlink
+/bin/db_hotbackup                 /bin/realpath
+/bin/db_load                      /bin/recode-sr-latin
+/bin/db_replicate                 /bin/redhat_lsb_init
+/bin/db_stat                      /bin/rename
+/bin/db_upgrade                   /bin/repo-graph
+/bin/dbus-cleanup-sockets         /bin/repomanage
+/bin/dbus-daemon                  /bin/repotrack
+/bin/dbus-launch                  /bin/rmail
+/bin/deallocvt                    /bin/rmail.postfix
+/bin/debuginfo-install            /bin/rnano
+/bin/desktop-file-install         /bin/run-parts
+/bin/desktop-file-validate        /bin/sacct
+/bin/dgawk                        /bin/sacctmgr
+/bin/dirname                      /bin/sadf
+/bin/dislocate                    /bin/salloc
+/bin/display                      /bin/sandbox
+/bin/dnsdomainname                /bin/sar
+/bin/domainname                   /bin/sattach
+/bin/dracut                       /bin/sbatch
+/bin/easy_install                 /bin/sbcast
+/bin/easy_install-2.7             /bin/scancel
+/bin/emacs                        /bin/scl_enabled
+/bin/emacs-24.3                   /bin/scriptreplay
+/bin/emacsclient                  /bin/sdiag
+/bin/encode_keychange             /bin/semodule_package
+/bin/etags                        /bin/sensu-install
+/bin/etags.emacs                  /bin/setarch
+/bin/eu-addr2line                 /bin/setfacl
+/bin/eu-ar                        /bin/setmetamode
+/bin/eu-make-debug-archive        /bin/setserial
+/bin/eu-ranlib                    /bin/setxkbmap
+/bin/eu-readelf                   /bin/sfcbstage
+/bin/eu-stack                     /bin/sfcbtrace
+/bin/expand                       /bin/sfcbunstage
+/bin/factor                       /bin/sgather
+/bin/fallocate                    /bin/sha1sum
+/bin/false                        /bin/sha224sum
+/bin/fc-cache                     /bin/sha256sum
+/bin/fc-cat                       /bin/sha384sum
+/bin/fc-match                     /bin/sha512sum
+/bin/fc-pattern                   /bin/show-changed-rco
+/bin/fc-scan                      /bin/show-installed
+/bin/fc-validate                  /bin/sjstat
+/bin/find-repos-of-install        /bin/slabtop
+/bin/fipshmac                     /bin/smail
+/bin/firewall-cmd                 /bin/smap
+/bin/firewall-offline-cmd         /bin/smbpasswd
+/bin/gapplication                 /bin/snmpbulkwalk
+/bin/gawk                         /bin/snmpdelta
+/bin/gcc-ar                       /bin/snmpnetstat
+/bin/gcc-ranlib                   /bin/snmpstatus
+/bin/gctags                       /bin/snmptable
+/bin/gdb-add-index                /bin/snmptranslate
+/bin/gdk-pixbuf-query-loaders-64  /bin/snmptrap
+/bin/gencat                       /bin/snmpvacm
+/bin/generate_pbs_nodefile        /bin/snmpwalk
+/bin/getfacl                      /bin/spax
+/bin/gfortran                     /bin/splain
+/bin/git-receive-pack             /bin/ssh-add
+/bin/git-upload-archive           /bin/ssh-agent
+/bin/git-upload-pack              /bin/sshare
+/bin/glib-compile-schemas         /bin/ssh-keyscan
+/bin/gmake                        /bin/ssltap
+/bin/gpasswd                      /bin/sss_ssh_authorizedkeys
+/bin/gpg-agent                    /bin/sstat
+/bin/gpg-connect-agent            /bin/stat
+/bin/gpgparsemail                 /bin/strace
+/bin/grep-changelog               /bin/strace-log-merge
+/bin/grub2-mkimage                /bin/stream
+/bin/grub2-mklayout               /bin/sudoreplay
+/bin/grub2-mkpasswd-pbkdf2        /bin/systemd-analyze
+/bin/grub2-mkrelpath              /bin/systemd-ask-password
+/bin/grub2-mkstandalone           /bin/systemd-cat
+/bin/grub2-render-label           /bin/systemd-delta
+/bin/gsettings-data-convert       /bin/systemd-escape
+/bin/gstack                       /bin/systemd-machine-id-setup
+/bin/gstat                        /bin/systemd-nspawn
+/bin/gtar                         /bin/systemd-path
+/bin/gtk-launch                   /bin/systemd-tty-ask-password-agent
+/bin/gtk-update-icon-cache        /bin/tabs
+/bin/hammer                       /bin/tac
+/bin/hdsploader                   /bin/tail
+/bin/head                         /bin/tailf
+/bin/hostname                     /bin/tar
+/bin/hostnamectl                  /bin/taskset
+/bin/ibv_asyncwatch               /bin/tcptraceroute
+/bin/iceauth                      /bin/teamd
+/bin/idiag-socket-details         /bin/teamdctl
+/bin/ifnames                      /bin/teamnl
+/bin/igawk                        /bin/testparm
+/bin/infotocap                    /bin/tfm-rake
+/bin/install                      /bin/timedatectl
+/bin/iostat                       /bin/timed-read
+/bin/ipcalc                       /bin/tload
+/bin/iptables-xml                 /bin/tracepath
+/bin/journalctl                   /bin/tracepath6
+/bin/kadmin                       /bin/traceroute
+/bin/kbdrate                      /bin/traceroute6
+/bin/kernel-install               /bin/truncate
+/bin/killall                      /bin/turbostat
+/bin/kpasswd                      /bin/ucs2any
+/bin/last                         /bin/udevadm
+/bin/lastb                        /bin/umask
+/bin/lastlog                      /bin/unalias
+/bin/lfs_migrate                  /bin/uname
+/bin/llobdstat                    /bin/unexpand
+/bin/llstat                       /bin/unicode_start
+/bin/loadkeys                     /bin/unshare
+/bin/loadunimap                   /bin/update-ca-trust
+/bin/locale                       /bin/updatedb
+/bin/localectl                    /bin/update-desktop-database
+/bin/localedef                    /bin/update-gtk-immodules
+/bin/locate                       /bin/update-mime-database
+/bin/logname                      /bin/urlgrabber
+/bin/lppasswd                     /bin/usx2yloader
+/bin/lpstat                       /bin/virtualenv
+/bin/lpstat.cups                  /bin/virtualenv-2.7
+/bin/lsattr                       /bin/vmstat
+/bin/lsb_release                  /bin/vxloader
+/bin/lua                          /bin/wait
+/bin/luac                         /bin/wall
+/bin/lwp-download                 /bin/watch
+/bin/machinectl                   /bin/watchgnupg
+/bin/mail                         /bin/wbemcat
+/bin/Mail                         /bin/weather
+/bin/mailq                        /bin/wftopfa
+/bin/mailq.postfix                /bin/whatis
+/bin/mailx                        /bin/whiptail
+/bin/make                         /bin/whoami
+/bin/makedb                       /bin/x86_64-redhat-linux-c++
+/bin/man                          /bin/x86_64-redhat-linux-g++
+/bin/mandb                        /bin/x86_64-redhat-linux-gcc
+/bin/manpath                      /bin/xargs
+/bin/mapscrn                      /bin/xauth
+/bin/mixartloader                 /bin/xclipboard
+/bin/mkfontscale                  /bin/xgamma
+/bin/mkpasswd                     /bin/xload
+/bin/montage                      /bin/xlsatoms
+/bin/mpstat                       /bin/xmag
+/bin/msgattrib                    /bin/xmessage
+/bin/msgcat                       /bin/xmlcatalog
+/bin/msghack                      /bin/xmodmap
+/bin/nail                         /bin/xorg-x11-fonts-update-dirs
+/bin/namei                        /bin/xrandr
+/bin/nano                         /bin/xserver-sdk-abi-requires
+/bin/ncat                         /bin/xstdcmap
+/bin/needs-restarting             /bin/xzcat
+/bin/netstat                      /bin/ypcat
+/bin/nettle-hash                  /bin/ypdomainname
+/bin/nettle-lfib-stream           /bin/ypmatch
+/bin/newaliases                   /bin/yppasswd
+/bin/newaliases.postfix           /bin/yum-config-manager
+/bin/nf-ct-add                    /bin/yumdownloader
+/bin/nf-exp-add                   /bin/yum-groups-manager
+/bin/nfsiostat                    /bin/zcat
+/bin/nisdomainname                /bin/zipcloak
+/bin/nl-addr-add                  /bin/zipdetails
+
+
+
+
+. List all of the files in /bin that end with the letter 'o'
+
+[is79@compute-a-16-70 other]$ ls /bin/*o
+
+/bin/captoinfo    /bin/kbdinfo   /bin/rpm2cpio          /bin/xdpyinfo
+/bin/co           /bin/kvno      /bin/show-changed-rco  /bin/xlogo
+/bin/cpio         /bin/lessecho  /bin/sinfo             /bin/xvinfo
+/bin/echo         /bin/mkfifo    /bin/sprio             /bin/xwininfo
+/bin/ibv_devinfo  /bin/nano      /bin/sudo              /bin/zipinfo
+/bin/info         /bin/rnano     /bin/who
+
+
+
+
+. BONUS: List all of the files in /bin that contain the letter 'a' or 'c'. (This was not covered in the
+lesson)
+
+#Here it should say [is79@compute-a-16-70 other]$ ls /bin/*a* || *o* (with an asterisk before and after a and o)
+#I do not know why *a* and *o* (with an asterisk before and after the letter) are printed as a and o (with no asterisk) in the HTML file
+
+[is79@compute-a-16-70 other]$ ls /bin/*a* || *o*
+
+/bin/a2p                          /bin/nl-addr-delete
+/bin/aclocal                      /bin/nl-addr-list
+/bin/aclocal-1.13                 /bin/nl-class-add
+/bin/addr2line                    /bin/nl-class-delete
+/bin/alias                        /bin/nl-classid-lookup
+/bin/animate                      /bin/nl-class-list
+/bin/apropos                      /bin/nl-cls-add
+/bin/ar                           /bin/nl-link-enslave
+/bin/arch                         /bin/nl-link-ifindex2name
+/bin/as                           /bin/nl-link-name2ifindex
+/bin/aserver                      /bin/nl-link-release
+/bin/at                           /bin/nl-link-stats
+/bin/atq                          /bin/nl-list-caches
+/bin/atrm                         /bin/nl-neigh-add
+/bin/audit2allow                  /bin/nl-qdisc-add
+/bin/audit2why                    /bin/nl-route-add
+/bin/aulast                       /bin/nl-util-addr
+/bin/aulastlog                    /bin/nmap
+/bin/ausyscall                    /bin/nmtui-hostname
+/bin/autoconf                     /bin/nsupdate
+/bin/autoexpect                   /bin/ntpstat
+/bin/autoheader                   /bin/package-cleanup
+/bin/autom4te                     /bin/pango-querymodules-64
+/bin/automake                     /bin/pango-view
+/bin/automake-1.13                /bin/passmass
+/bin/autoreconf                   /bin/passwd
+/bin/autoscan                     /bin/paste
+/bin/autoupdate                   /bin/patch
+/bin/auvirt                       /bin/pathchk
+/bin/awk                          /bin/pax
+/bin/base64                       /bin/perlthanks
+/bin/basename                     /bin/pf2afm
+/bin/bash                         /bin/pfbtopfa
+/bin/bashbug                      /bin/pgawk
+/bin/bashbug-64                   /bin/pidstat
+/bin/batch                        /bin/pkaction
+/bin/bdftruncate                  /bin/pkla-admin-identities
+/bin/bond2team                    /bin/pkla-check-authorization
+/bin/bzcat                        /bin/pkttyagent
+/bin/cairo-sphinx                 /bin/plot-llstat
+/bin/cal                          /bin/pmap
+/bin/ca-legacy                    /bin/pod2man
+/bin/cancel                       /bin/pod2usage
+/bin/cancel.cups                  /bin/printafm
+/bin/captoinfo                    /bin/prtstat
+/bin/cat                          /bin/ps2ascii
+/bin/catchsegv                    /bin/psfaddtable
+/bin/catman                       /bin/psfgettable
+/bin/chacl                        /bin/psfstriptable
+/bin/chage                        /bin/psfxtable
+/bin/chardetect                   /bin/pstack
+/bin/chattr                       /bin/pwmake
+/bin/chcat                        /bin/qalter
+/bin/cifsiostat                   /bin/qstat
+/bin/clear                        /bin/quota
+/bin/command                      /bin/quotasync
+/bin/compare                      /bin/ranlib
+/bin/crontab                      /bin/raw
+/bin/crontab.ssh                  /bin/rcsclean
+/bin/date                         /bin/read
+/bin/db_archive                   /bin/readelf
+/bin/db_deadlock                  /bin/readlink
+/bin/db_hotbackup                 /bin/realpath
+/bin/db_load                      /bin/recode-sr-latin
+/bin/db_replicate                 /bin/redhat_lsb_init
+/bin/db_stat                      /bin/rename
+/bin/db_upgrade                   /bin/repo-graph
+/bin/dbus-cleanup-sockets         /bin/repomanage
+/bin/dbus-daemon                  /bin/repotrack
+/bin/dbus-launch                  /bin/rmail
+/bin/deallocvt                    /bin/rmail.postfix
+/bin/debuginfo-install            /bin/rnano
+/bin/desktop-file-install         /bin/run-parts
+/bin/desktop-file-validate        /bin/sacct
+/bin/dgawk                        /bin/sacctmgr
+/bin/dirname                      /bin/sadf
+/bin/dislocate                    /bin/salloc
+/bin/display                      /bin/sandbox
+/bin/dnsdomainname                /bin/sar
+/bin/domainname                   /bin/sattach
+/bin/dracut                       /bin/sbatch
+/bin/easy_install                 /bin/sbcast
+/bin/easy_install-2.7             /bin/scancel
+/bin/emacs                        /bin/scl_enabled
+/bin/emacs-24.3                   /bin/scriptreplay
+/bin/emacsclient                  /bin/sdiag
+/bin/encode_keychange             /bin/semodule_package
+/bin/etags                        /bin/sensu-install
+/bin/etags.emacs                  /bin/setarch
+/bin/eu-addr2line                 /bin/setfacl
+/bin/eu-ar                        /bin/setmetamode
+/bin/eu-make-debug-archive        /bin/setserial
+/bin/eu-ranlib                    /bin/setxkbmap
+/bin/eu-readelf                   /bin/sfcbstage
+/bin/eu-stack                     /bin/sfcbtrace
+/bin/expand                       /bin/sfcbunstage
+/bin/factor                       /bin/sgather
+/bin/fallocate                    /bin/sha1sum
+/bin/false                        /bin/sha224sum
+/bin/fc-cache                     /bin/sha256sum
+/bin/fc-cat                       /bin/sha384sum
+/bin/fc-match                     /bin/sha512sum
+/bin/fc-pattern                   /bin/show-changed-rco
+/bin/fc-scan                      /bin/show-installed
+/bin/fc-validate                  /bin/sjstat
+/bin/find-repos-of-install        /bin/slabtop
+/bin/fipshmac                     /bin/smail
+/bin/firewall-cmd                 /bin/smap
+/bin/firewall-offline-cmd         /bin/smbpasswd
+/bin/gapplication                 /bin/snmpbulkwalk
+/bin/gawk                         /bin/snmpdelta
+/bin/gcc-ar                       /bin/snmpnetstat
+/bin/gcc-ranlib                   /bin/snmpstatus
+/bin/gctags                       /bin/snmptable
+/bin/gdb-add-index                /bin/snmptranslate
+/bin/gdk-pixbuf-query-loaders-64  /bin/snmptrap
+/bin/gencat                       /bin/snmpvacm
+/bin/generate_pbs_nodefile        /bin/snmpwalk
+/bin/getfacl                      /bin/spax
+/bin/gfortran                     /bin/splain
+/bin/git-receive-pack             /bin/ssh-add
+/bin/git-upload-archive           /bin/ssh-agent
+/bin/git-upload-pack              /bin/sshare
+/bin/glib-compile-schemas         /bin/ssh-keyscan
+/bin/gmake                        /bin/ssltap
+/bin/gpasswd                      /bin/sss_ssh_authorizedkeys
+/bin/gpg-agent                    /bin/sstat
+/bin/gpg-connect-agent            /bin/stat
+/bin/gpgparsemail                 /bin/strace
+/bin/grep-changelog               /bin/strace-log-merge
+/bin/grub2-mkimage                /bin/stream
+/bin/grub2-mklayout               /bin/sudoreplay
+/bin/grub2-mkpasswd-pbkdf2        /bin/systemd-analyze
+/bin/grub2-mkrelpath              /bin/systemd-ask-password
+/bin/grub2-mkstandalone           /bin/systemd-cat
+/bin/grub2-render-label           /bin/systemd-delta
+/bin/gsettings-data-convert       /bin/systemd-escape
+/bin/gstack                       /bin/systemd-machine-id-setup
+/bin/gstat                        /bin/systemd-nspawn
+/bin/gtar                         /bin/systemd-path
+/bin/gtk-launch                   /bin/systemd-tty-ask-password-agent
+/bin/gtk-update-icon-cache        /bin/tabs
+/bin/hammer                       /bin/tac
+/bin/hdsploader                   /bin/tail
+/bin/head                         /bin/tailf
+/bin/hostname                     /bin/tar
+/bin/hostnamectl                  /bin/taskset
+/bin/ibv_asyncwatch               /bin/tcptraceroute
+/bin/iceauth                      /bin/teamd
+/bin/idiag-socket-details         /bin/teamdctl
+/bin/ifnames                      /bin/teamnl
+/bin/igawk                        /bin/testparm
+/bin/infotocap                    /bin/tfm-rake
+/bin/install                      /bin/timedatectl
+/bin/iostat                       /bin/timed-read
+/bin/ipcalc                       /bin/tload
+/bin/iptables-xml                 /bin/tracepath
+/bin/journalctl                   /bin/tracepath6
+/bin/kadmin                       /bin/traceroute
+/bin/kbdrate                      /bin/traceroute6
+/bin/kernel-install               /bin/truncate
+/bin/killall                      /bin/turbostat
+/bin/kpasswd                      /bin/ucs2any
+/bin/last                         /bin/udevadm
+/bin/lastb                        /bin/umask
+/bin/lastlog                      /bin/unalias
+/bin/lfs_migrate                  /bin/uname
+/bin/llobdstat                    /bin/unexpand
+/bin/llstat                       /bin/unicode_start
+/bin/loadkeys                     /bin/unshare
+/bin/loadunimap                   /bin/update-ca-trust
+/bin/locale                       /bin/updatedb
+/bin/localectl                    /bin/update-desktop-database
+/bin/localedef                    /bin/update-gtk-immodules
+/bin/locate                       /bin/update-mime-database
+/bin/logname                      /bin/urlgrabber
+/bin/lppasswd                     /bin/usx2yloader
+/bin/lpstat                       /bin/virtualenv
+/bin/lpstat.cups                  /bin/virtualenv-2.7
+/bin/lsattr                       /bin/vmstat
+/bin/lsb_release                  /bin/vxloader
+/bin/lua                          /bin/wait
+/bin/luac                         /bin/wall
+/bin/lwp-download                 /bin/watch
+/bin/machinectl                   /bin/watchgnupg
+/bin/mail                         /bin/wbemcat
+/bin/Mail                         /bin/weather
+/bin/mailq                        /bin/wftopfa
+/bin/mailq.postfix                /bin/whatis
+/bin/mailx                        /bin/whiptail
+/bin/make                         /bin/whoami
+/bin/makedb                       /bin/x86_64-redhat-linux-c++
+/bin/man                          /bin/x86_64-redhat-linux-g++
+/bin/mandb                        /bin/x86_64-redhat-linux-gcc
+/bin/manpath                      /bin/xargs
+/bin/mapscrn                      /bin/xauth
+/bin/mixartloader                 /bin/xclipboard
+/bin/mkfontscale                  /bin/xgamma
+/bin/mkpasswd                     /bin/xload
+/bin/montage                      /bin/xlsatoms
+/bin/mpstat                       /bin/xmag
+/bin/msgattrib                    /bin/xmessage
+/bin/msgcat                       /bin/xmlcatalog
+/bin/msghack                      /bin/xmodmap
+/bin/nail                         /bin/xorg-x11-fonts-update-dirs
+/bin/namei                        /bin/xrandr
+/bin/nano                         /bin/xserver-sdk-abi-requires
+/bin/ncat                         /bin/xstdcmap
+/bin/needs-restarting             /bin/xzcat
+/bin/netstat                      /bin/ypcat
+/bin/nettle-hash                  /bin/ypdomainname
+/bin/nettle-lfib-stream           /bin/ypmatch
+/bin/newaliases                   /bin/yppasswd
+/bin/newaliases.postfix           /bin/yum-config-manager
+/bin/nf-ct-add                    /bin/yumdownloader
+/bin/nf-exp-add                   /bin/yum-groups-manager
+/bin/nfsiostat                    /bin/zcat
+/bin/nisdomainname                /bin/zipcloak
+/bin/nl-addr-add                  /bin/zipdetails
+
+
+
+
+#############################################
+
+3.3: Examining files, searching and redirection (8 points)
+
+7. Print the contents of sequences-copy.fq to the screen.
+
+[is79@compute-a-16-70 other]$ cat sequences-copy.fa
+
+>SRR014849.1 EIXKN4201CFU84 length=93
+GGGGGGGGGGGGGGGGCTTTTTTTGTTTGGAACCGAAAGGGTTTTGAATTTCAAACCCTTTTCGGTTTCCAACCTTCCAAAGCAATGCCAATA
+
+>gi|340780744|ref|NC_015850.1| Acidithiobacillus caldus SM-1 chromosome, complete genome
+ATGAGTAGTCATTCAGCGCCGACAGCGTTGCAAGATGGAGCCGCGCTGTGGTCCGCCCTATGCGTCCAACTGGAGCTCGTCACGAG
+TCCGCAGCAGTTCAATACCTGGCTGCGGCCCCTGCGTGGCGAATTGCAGGGTCATGAGCTGCGCCTGCTCGCCCCCAATCCCTTCG
+TCCGCGACTGGGTGCGTGAACGCATGGCCGAACTCGTCAAGGAACAGCTGCAGCGGATCGCTCCGGGTTTTGAGCTGGTCTTCGCT
+CTGGACGAAGAGGCAGCAGCGGCGACATCGGCACCGACCGCGAGCATTGCGCCCGAGCGCAGCAGCGCACCCGGTGGTCACCGCCT
+CAACCCAGCCTTCAACTTCCAGTCCTACGTCGAAGGGAAGTCCAATCAGCTCGCCCTGGCGGCAGCCCGCCAGGTTGCCCAGCATC
+CAGGCAAATCCTACAACCCACTGTACATTTATGGTGGTGTGGGCCTCGGCAAGACGCACCTCATGCAGGCCGTGGGCAACGATATC
+CTGCAGCGGCAACCCGAGGCCAAGGTGCTCTATATCAGCTCCGAAGGCTTCATCATGGATATGGTGCGCTCGCTGCAACACAATAC
+CATCAACGACTTCAAACAGCGTTATCGCAAGCTGGACGCCCTGCTCATCGACGACATCCAGTTCTTTGCGGGCAAGGACCGCACCC
+
+>gi|129295|sp|P01013|OVAX_CHICK GENE X PROTEIN (OVALBUMIN-RELATED)
+QIKDLLVSSSTDLDTTLVLVNAIYFKGMWKTAFNAEDTREMPFHVTKQESKPVQMMCMNNSFNVATLPAE
+
+
+
+
+8. Use the head command to keep only the first two sequences of this file.
+
+I am assuming here sequences and not lines as explained in one of the piazza questions, but again this is superconfusing
+
+[is79@compute-a-16-73 other]$ head -n 12 sequences-copy.fa
+
+>SRR014849.1 EIXKN4201CFU84 length=93
+GGGGGGGGGGGGGGGGCTTTTTTTGTTTGGAACCGAAAGGGTTTTGAATTTCAAACCCTTTTCGGTTTCCAACCTTCCAA
+AGCAATGCCAATA
+
+>gi|340780744|ref|NC_015850.1| Acidithiobacillus caldus SM-1 chromosome, complet
+e genome
+ATGAGTAGTCATTCAGCGCCGACAGCGTTGCAAGATGGAGCCGCGCTGTGGTCCGCCCTATGCGTCCAACTGGAGCTCGT
+CACGAG
+TCCGCAGCAGTTCAATACCTGGCTGCGGCCCCTGCGTGGCGAATTGCAGGGTCATGAGCTGCGCCTGCTCGCCCCCAATC
+CCTTCG
+TCCGCGACTGGGTGCGTGAACGCATGGCCGAACTCGTCAAGGAACAGCTGCAGCGGATCGCTCCGGGTTTTGAGCTGGTC
+TTCGCT
+CTGGACGAAGAGGCAGCAGCGGCGACATCGGCACCGACCGCGAGCATTGCGCCCGAGCGCAGCAGCGCACCCGGTGGTCA
+CCGCCT
+CAACCCAGCCTTCAACTTCCAGTCCTACGTCGAAGGGAAGTCCAATCAGCTCGCCCTGGCGGCAGCCCGCCAGGTTGCCC
+AGCATC
+CAGGCAAATCCTACAACCCACTGTACATTTATGGTGGTGTGGGCCTCGGCAAGACGCACCTCATGCAGGCCGTGGGCAAC
+GATATC
+CTGCAGCGGCAACCCGAGGCCAAGGTGCTCTATATCAGCTCCGAAGGCTTCATCATGGATATGGTGCGCTCGCTGCAACA
+CAATAC
+CATCAACGACTTCAAACAGCGTTATCGCAAGCTGGACGCCCTGCTCATCGACGACATCCAGTTCTTTGCGGGCAAGGACC
+GCACCC
+
+
+
+
+9. The last two lines of the file sequences-copy.fq represent a protein sequence. Use the tail command
+to take those two lines and redirect them into a new file called protein.fa.
+
+[is79@compute-a-16-73 other] tail -n 2 sequences-copy.fa
+
+>gi|129295|sp|P01013|OVAX_CHICK GENE X PROTEIN (OVALBUMIN-RELATED)
+QIKDLLVSSSTDLDTTLVLVNAIYFKGMWKTAFNAEDTREMPFHVTKQESKPVQMMCMNNSFNVATLPAE
+ute-a-16-70 other]$ tail -n 2 sequences-copy.fa > protein.fa
+
+And I make sure that the protein.fa file is there and it has the correct content
+
+[is79@compute-a-16-70 other]$ ls
+
+Mov10_rnaseq_metadata.txt  sequences.fa                  trimmomatic-serial.lsf
+protein.fa                 trimmomatic-multithreaded.sh
+sequences-copy.fa          trimmomatic-on-input-file.sh
+
+[is79@compute-a-16-70 other]$ cat protein.fa
+
+>gi|129295|sp|P01013|OVAX_CHICK GENE X PROTEIN (OVALBUMIN-RELATED)
+QIKDLLVSSSTDLDTTLVLVNAIYFKGMWKTAFNAEDTREMPFHVTKQESKPVQMMCMNNSFNVATLPAE
+
+
+
+
+10. Use grep to search for the pattern CAGCT in the sequences-copy.fq file. Use your shell knowledge to
+count how many times that pattern appears in the file. Now use the man pages to find out how you can
+count using the grep command (and use grep to count).
+
+[is79@compute-a-16-70 other]$ grep CAGCT sequences-copy.fa
+
+TCCGCGACTGGGTGCGTGAACGCATGGCCGAACTCGTCAAGGAACAGCTGCAGCGGATCGCTCCGGGTTTTGAGCTGGTCTTCGCT
+CAACCCAGCCTTCAACTTCCAGTCCTACGTCGAAGGGAAGTCCAATCAGCTCGCCCTGGCGGCAGCCCGCCAGGTTGCCCAGCATC
+CTGCAGCGGCAACCCGAGGCCAAGGTGCTCTATATCAGCTCCGAAGGCTTCATCATGGATATGGTGCGCTCGCTGCAACACAATAC
+
+[is79@compute-a-16-70 other]$ grep CAGCT sequences-copy.fa | wc
+
+      3       3     261
+      
+We found 3 sequences
+
+Using grep --count we found 3 sequences
+
+[is79@compute-a-16-70 other]$ grep --count CAGCT sequences-copy.fa
+3
+
+
+
+
+Question 5
+----------
+
+It took me 15 hours to complete this problem
+
+
+
+
+

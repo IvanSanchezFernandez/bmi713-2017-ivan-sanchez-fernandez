@@ -1,0 +1,613 @@
+---
+title: "BMI713 Problem Set 3"
+output:
+  html_document: default
+  pdf_document: default
+header-includes: \usepackage{amsmath}
+---
+Ivan Sanchez Fernandez
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE , eval=TRUE)
+```
+
+#### Instructions:
+
+Please submit this problem set before class on Tuesday, November 14. Problem sets may be submitted within a week past the due date at a 20% penalty; each person is allowed to submit one problem late (within a week) without penalty. Please comment your code indicating what your functions do and any relevant passage (not necessarily every line of code), because it is part of the requirements of each exercise. Missing comments will not allow the full score.
+
+If you have any questions, please post on the piazza site. This problem set was prepared by Tiziana Sanavia and Giorgio Melloni, so they will be most prepared to answer questions.
+
+NOTE: there are some exercises (1.e, 3.c and Extra.b) where we ask to perform the calculation "by hand". This means that you are not allowed to use the built-in R functions like `chisq.test`, `wilcox.test` and `fisher.test` but rather perform all the passages as shown in the lectures (still using R for the math, if needed). 
+
+### 1. Non-Parametric Testing Part 1 (35 points)
+
+A pharmaceutical company is testing a new soporific drug that is supposed to be more effective than the state-of-the-art medication. 10 subjects are recruited and the hours of extra sleep are reported. The null hypothesis $H_0$ is that there is no difference in extra hours of sleep between the two drugs.
+```{r , echo=FALSE , eval=TRUE}
+Subject <- 1:10
+Old_Drug <- c(1.9 , -1.6 , -0.2 , -1.3 , -0.1 , 3.4 , 3.7 , 0.8 , 0.0 , 2.0)
+New_Drug <- c(0.7 , 0.8 , 1.1 , 0.1 , -0.2 , 4.4 , 5.5 , 1.6 , 4.6 , 3.4)
+knitr::kable( cbind(Subject , New_Drug , Old_Drug ))
+```
+
+
+
+
+#### (a) Calculate the Wilcoxon signed-rank T statistic (5 points)
+```{r}
+# Calculate the difference in extra hours of sleep between the drugs
+difference <- New_Drug - Old_Drug
+
+# Create a dataframe with the data and check that it looks as expected
+soporific <- data.frame(Subject, Old_Drug, New_Drug, difference)
+soporific
+
+# Sort by the absolute difference and check that it looks as expected
+sortedsoporific <- soporific[order(abs(difference)), ]
+sortedsoporific
+
+# Once sorted, add the rank and check that the database looks as expected
+sortedsoporific$rank <- seq(from = 1, to = dim(sortedsoporific)[1], by = 1)
+sortedsoporific
+
+# Calculate the Wilcoxon signed-rank test T statistic
+T <- sum(sortedsoporific$rank[sortedsoporific$difference > 0])
+T
+
+# The T statistic is 50
+# Which is the same (V = 50) than calculating it with the built-in method
+wilcox.test(sortedsoporific$New_Drug, sortedsoporific$Old_Drug, paired = TRUE)
+```
+
+
+
+
+#### (b) Calculate $\mu_T$ and $\sigma_T$ under the Null hypothesis (5 points)
+Under the null hypothesis, the mean of the T distribution is
+$$E[T] = \mu = \dfrac{n * (n + 1)}{4}$$
+and the variance is
+$$Var[T] = \sigma^2 = \dfrac{n * (n + 1) * (2 * n + 1)}{24}$$
+```{r}
+# Therefore, we can calculate the mean, variance, and standard deviation under the null hypothesis
+n <- dim(soporific)[1]
+
+meanT <- (n * (n + 1)) / 4
+meanT
+
+varianceT <- (n * (n + 1) * (2 * n + 1)) / 24
+varianceT
+
+sdT <- sqrt(varianceT)
+sdT
+# Mean = 27.5
+# Standard deviation = 9.810708
+```
+
+
+
+
+#### (c) Using the T statistic, $\mu_T$ and $\sigma_T$, calculate the p-value under the normal approximation and comment the result obtained. (5 points)
+Under the normal approximation, the distribution approximates a normal distribution with mean 0 and variance 1, a Z distribution
+$$Z =  \dfrac{T - \mu}{\sigma}$$
+```{r}
+# Calculate Z under the normal approximation
+Z <- (T - meanT) / sdT
+Z
+
+# As the Z value is positive (above 0 in the standard normal distribution), we calculate the upper tail of the distribution above that value. This would be the one sided p-value
+onesidedpvalue <- pnorm(Z, mean = 0, sd = 1, lower.tail = FALSE)
+onesidedpvalue
+
+# As we are assumming a symmetric distribution (standard normal distribution) to calculate the two-sided p-value we just multiply by 2
+twosidedpvalue <- 2 * onesidedpvalue
+twosidedpvalue
+
+# Based on the results, the null hypothesis that there is no difference in extra hours of sleep between new drugs and old drugs can be rejected with a two-sided p-value of 0.02182428.
+```
+
+
+
+
+#### (d) Calculate the p-value using the built-in R function for Wilcoxon signed-rank test. Are the p-values different? Are the conclusions different? NOTE, use correct=FALSE and exact=TRUE to obtain the same result in (1.d) and (1.e) (5 points)
+```{r}
+# Calculate Wilcoxon signed-rank test
+wilcox.test(x = soporific$New_Drug, y = soporific$Old_Drug, alternative = "two.sided", paired = TRUE, correct = FALSE, exact = TRUE)
+
+# Based on the data, the null hypothesis that there is no difference in extra hours of sleep between the new drugs and old drugs can be rejected with a two-sided p-value of 0.01953.
+
+# The p-value here in d) is different compared with the p-value above in c), but the conclusions are the same. The reason why the p-values are different is that we used the normal approximation above in c) but the built-in function did not use this approximation. Actually, we forced the method to calculate an exact p-value with correct = TRUE
+# If we use correct = FALSE, the built-in method also uses the normal approximation and the result is equal to c)
+wilcox.test(x = soporific$New_Drug, y = soporific$Old_Drug, alternative = "two.sided", paired = TRUE, correct = FALSE, exact = FALSE)
+```
+
+
+
+
+#### (e) Calculate the exact Wilcoxon signed-rank p-value "by hand" and show all the steps in order to obtain it (DO NOT use the built-in function and comment your code). (10 points)
+```{r}
+## First, calculate by hand the T statistic as above
+
+# Calculate the difference in extra hours of sleep between the drugs
+difference <- New_Drug - Old_Drug
+
+# Create a dataframe with the data and check that it looks as expected
+soporific <- data.frame(Subject, Old_Drug, New_Drug, difference)
+soporific
+
+# Sort by the absolute difference and check that it looks as expected
+sortedsoporific <- soporific[order(abs(difference)), ]
+sortedsoporific
+
+# Once sorted, add the rank and check that the database looks as expected
+sortedsoporific$rank <- seq(from = 1, to = dim(sortedsoporific)[1], by = 1)
+sortedsoporific
+
+# Calculate the Wilcoxon signed-rank test T statistic
+T <- sum(sortedsoporific$rank[sortedsoporific$difference > 0])
+T
+
+# The T statistic is 50
+
+## Then, evaluate all the possible ways in which 10 observations can combine as being positive or negative
+
+# Each rank from 1 to 10 can be either positive or negative (2 posibilities)
+# Therefore, the possible combinations of ranks are 
+2 ^ 10
+# 1024
+
+# We can represent this as the number are ranks and when the ranks are substituted by a 0 it means that that rank is negative
+combination1 <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+combination2 <- c(0, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+combination3 <- c(1, 0, 3, 4, 5, 6, 7, 8, 9, 10)
+combination4 <- c(1, 2, 0, 4, 5, 6, 7, 8, 9, 10)
+combination5 <- c(1, 2, 3, 0, 5, 6, 7, 8, 9, 10)
+combination6 <- c(1, 2, 3, 4, 0, 6, 7, 8, 9, 10)
+combination7 <- c(1, 2, 3, 4, 5, 0, 7, 8, 9, 10)
+combination8 <- c(1, 2, 3, 4, 5, 6, 0, 8, 9, 10)
+combination9 <- c(1, 2, 3, 4, 5, 6, 7, 0, 9, 10)
+combination10 <- c(1, 2, 3, 4, 5, 6, 7, 8, 0, 10)
+combination11 <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+combination12 <- c(0, 0, 3, 4, 5, 6, 7, 8, 9, 10)
+combination13 <- c(0, 2, 0, 4, 5, 6, 7, 8, 9, 10)
+combination14 <- c(0, 2, 3, 0, 5, 6, 7, 8, 9, 10)
+combination15 <- c(0, 2, 3, 4, 0, 6, 7, 8, 9, 10)
+combination16 <- c(0, 2, 3, 4, 5, 0, 7, 8, 9, 10)
+combination17 <- c(0, 2, 3, 4, 5, 6, 0, 8, 9, 10)
+combination18 <- c(0, 2, 3, 4, 5, 6, 7, 0, 9, 10)
+combination19 <- c(0, 2, 3, 4, 5, 6, 7, 8, 0, 10)
+combination19 <- c(0, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+combination20 <- c(1, 0, 0, 4, 5, 6, 7, 8, 9, 10)
+combination21 <- c(1, 0, 3, 0, 5, 6, 7, 8, 9, 10)
+combination22 <- c(1, 0, 3, 4, 0, 6, 7, 8, 9, 10)
+combination23 <- c(1, 0, 3, 4, 5, 0, 7, 8, 9, 10)
+combination24 <- c(1, 0, 3, 4, 5, 6, 0, 8, 9, 10)
+combination25 <- c(1, 0, 3, 4, 5, 6, 7, 0, 9, 10)
+combination25 <- c(1, 0, 3, 4, 5, 6, 7, 8, 0, 10)
+combination26 <- c(1, 0, 3, 4, 5, 6, 7, 8, 9, 0)
+combination27 <- c(1, 2, 0, 0, 5, 6, 7, 8, 9, 10)
+combination28 <- c(1, 2, 0, 4, 0, 6, 7, 8, 9, 10)
+combination29 <- c(1, 2, 0, 4, 5, 0, 7, 8, 9, 10)
+combination30 <- c(1, 2, 0, 4, 5, 6, 0, 8, 9, 10)
+combination31 <- c(1, 2, 0, 4, 5, 6, 7, 0, 9, 10)
+combination32 <- c(1, 2, 0, 4, 5, 6, 7, 8, 0, 10)
+combination33 <- c(1, 2, 0, 4, 5, 6, 7, 8, 0, 0)
+combination34 <- c(1, 2, 3, 0, 0, 6, 7, 8, 9, 10)
+combination35 <- c(1, 2, 3, 0, 5, 0, 7, 8, 9, 10)
+combination36 <- c(1, 2, 3, 0, 5, 6, 0, 8, 9, 10)
+combination37 <- c(1, 2, 3, 0, 5, 6, 7, 0, 9, 10)
+combination37 <- c(1, 2, 3, 0, 5, 6, 7, 8, 0, 10)
+combination38 <- c(1, 2, 3, 0, 5, 6, 7, 8, 9, 0)
+combination39 <- c(1, 2, 3, 4, 0, 0, 7, 8, 9, 10)
+combination40 <- c(1, 2, 3, 4, 0, 6, 0, 8, 9, 10)
+combination41 <- c(1, 2, 3, 4, 0, 6, 7, 0, 9, 10)
+combination42 <- c(1, 2, 3, 4, 0, 6, 7, 8, 0, 10)
+combination43 <- c(1, 2, 3, 4, 0, 6, 7, 8, 9, 0)
+combination44 <- c(1, 2, 3, 4, 5, 0, 0, 8, 9, 10)
+combination45 <- c(1, 2, 3, 4, 5, 0, 7, 0, 9, 10)
+combination46 <- c(1, 2, 3, 4, 5, 0, 7, 8, 0, 10)
+combination47 <- c(1, 2, 3, 4, 5, 0, 7, 8, 9, 0)
+combination48 <- c(1, 2, 3, 4, 5, 6, 0, 0, 9, 10)
+combination49 <- c(1, 2, 3, 4, 5, 6, 0, 8, 0, 10)
+combination50 <- c(1, 2, 3, 4, 5, 6, 0, 8, 9, 0)
+combination51 <- c(1, 2, 3, 4, 5, 6, 7, 0, 0, 10)
+combination52 <- c(1, 2, 3, 4, 5, 6, 7, 0, 9, 0)
+combination53 <- c(1, 2, 3, 4, 5, 6, 7, 8, 0, 0)
+combination54 <- c(0, 0, 0, 4, 5, 6, 7, 8, 9, 10)
+combination55 <- c(0, 0, 3, 0, 5, 6, 7, 8, 9, 10)
+combination56 <- c(0, 0, 3, 4, 0, 6, 7, 8, 9, 10)
+# Up until 1024 and then we calculate the sum of each combination to see how many ways there are to achieve each value of the T statistic
+# This is extremely time consuming, there should be a better way
+
+# In reality we only need the possibilities where the sum of ranks is equal or more extreme than T
+# For 50 or something more extreme we would have
+possibility1 <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility1)
+possibility2 <- c(0, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility2)
+possibility3 <- c(1, 0, 3, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility3)
+possibility4 <- c(1, 2, 0, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility4)
+possibility5 <- c(1, 2, 3, 0, 5, 6, 7, 8, 9, 10)
+sum(possibility5)
+possibility6 <- c(1, 2, 3, 4, 0, 6, 7, 8, 9, 10)
+sum(possibility6)
+# Continuing like this With posibilities with a single 0 all the sums would be smaller than the T value of 50
+# Now, with two 0
+possibility7 <- c(0, 0, 3, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility7)
+possibility8 <- c(0, 2, 0, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility8)
+possibility9 <- c(0, 2, 3, 0, 5, 6, 7, 8, 9, 10)
+sum(possibility9)
+possibility10 <- c(1, 0, 0, 4, 5, 6, 7, 8, 9, 10)
+sum(possibility10)
+# Continuing like this With posibilities with a two 0 all the sums would be smaller than the T value of 50
+# With three 0 even the highest combination c(0, 0, 0, 4, 5, 6, 7, 8, 9, 10) sums up to 49, so there are not more possibilities to sum up to 50 or higher with these ranks
+
+# So there are 10 possibilities of rank-sum 50 or something more extreme
+# The one-sided p-value would be 
+onesided <- 10 / (2 ^ 10)
+onesided
+# And the two-sided p-value
+twosided <- 2 * onesided
+twosided
+# p-value = 0.01953125
+
+# Which is the same we obtained at 1 d)
+wilcox.test(x = soporific$New_Drug, y = soporific$Old_Drug, alternative = "two.sided", paired = TRUE, correct = FALSE, exact = TRUE)
+```
+
+
+
+
+#### (f) Calculate the p-value using an appropriate equivalent parametric test and comment the obtained results with respect to the 'Non-parametric' version. (5 points)
+```{r}
+# The equivalent parametric tests would be the paired t-test
+t.test(soporific$New_Drug, soporific$Old_Drug, alternative = "two.sided", paired = TRUE)
+
+# The p-value with the paired t-test is 0.02139 which is slightly different than the calculated with Wilcoxon signed-rank test, but still very similar and still allows to reject the null hypothesis
+```
+
+
+
+
+
+
+
+
+### 2. Non-Parametric Testing Part 2 (30 points)
+
+In this second part we are going to simulate a few data to check the difference between unpaired T-test and Wilcoxon rank sum test.
+
+Imagine two vectors of length 10 from two different exponential distributions:
+```{r , echo = TRUE , eval = FALSE}
+x <- rexp(10 , rate = 10)
+y <- rexp(10 , rate = 40)
+```
+
+The hypothesis test is that $\mu_x$ is different than $\mu_y$ (two-sided $H_1$)
+
+
+
+
+#### (a) What is the most appropriate test in this case and why? (5 points)
+```{r}
+# In this case, we know that the distributions are not normal. They are exponential distributions. Therefore, the assumption of normality does not hold and the samples are relatively small (10 observations per sample). Therefore, the most appropriate test in this case is Wilcoxon rank sum test because it compares the ranks and does not assume normal distributions (as opposed to comparing the values to the mean and assuming normal distributions). Also, the observations are independent, so we do not use the paired observations version (Wilcoxon signed-rank test), but the unpaired observations version (Wilcoxon rank-sum test)
+```
+
+
+
+
+#### (b) As a general rule, if the assumptions of CLT do not hold, a non parametric test is more appropriate and sometimes more powerful than its parametric counterpart. By running a simulation with 1000 random couples (x,y) like above, show that the fraction of rejected Null hypotheses at alpha = 0.01 is higher in the case of a non parametric test. NOTE alpha is 1%!! What are we showing with this simulation? (10 points)
+```{r}
+# Keep p-values for t-test and for Wilcoxon rank sum test
+pvaluesttest <- vector()
+pvalueswilcoxon <- vector()
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Create a loop to create samples and perform the t-test and Wilcoxon rank sum test 1000 times
+for (i in 1 : 1000) {
+  
+  # Create samples
+  x <- rexp(10 , rate = 10)
+  y <- rexp(10 , rate = 40)
+  
+  
+  ########################## t-test
+  # Calculate the two-sided p-value
+  ttestp <- t.test(x, y, alternative = "two.sided", paired = FALSE)$p.value
+
+  # Add this p-value to the prior t-test p-values
+  pvaluesttest <- c(pvaluesttest, ttestp)
+  
+  
+  
+  ########################## Wilcoxon rank-sum test
+  # Calculate the two-sided p-value
+  wilcoxp <- wilcox.test(x, y, alternative = "two.sided", paired = FALSE, exact = TRUE)$p.value
+  
+  # Add this p-value to the prior Wilcoxon p-values
+  pvalueswilcoxon <- c(pvalueswilcoxon, wilcoxp)
+}
+
+# pvalues lower than 0.01
+pvaluesttestyesno <- ifelse(pvaluesttest < 0.01, "yes", "no")
+pvalueswilcoxonyesno <- ifelse(pvalueswilcoxon < 0.01, "yes", "no")
+
+
+# install.packages("gmodels")
+library(gmodels)
+
+# Percentage of two-sided p-values below 0.01
+CrossTable(pvaluesttestyesno)
+CrossTable(pvalueswilcoxonyesno)
+
+# The percentage of two-sided p-values below 0.01 is 18.4% for t test and 40.6% for Wilcoxon rank-sum test. The fraction of rejected p-values is higher with a non parametric test. What we are showing here is that when the distributions do not meet the assumptions of parametric tests, a non-parametric test may have more power than a parametric test
+```
+
+
+
+
+
+
+#### (c) An old statistical adagio says "If the data don't behave, hit it with a log. If the data still don't behave, hit it with a log again". What happen if we log-transform the data? Run the same simulation with log(x) and log(y) and comment the results obtained? (10 points)
+```{r}
+# Keep p-values for t-test and for Wilcoxon rank sum test
+pvaluesttest <- vector()
+pvalueswilcoxon <- vector()
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Create a loop to create samples and perform the t-test and Wilcoxon rank sum test 1000 times
+for (i in 1 : 1000) {
+  
+  # Create samples
+  x <- rexp(10 , rate = 10)
+  y <- rexp(10 , rate = 40)
+  
+  
+  ########################## t-test
+  # Calculate the two-sided p-value
+  ttestp <- t.test(log(x), log(y), alternative = "two.sided", paired = FALSE)$p.value
+
+  # Add this p-value to the prior t-test p-values
+  pvaluesttest <- c(pvaluesttest, ttestp)
+  
+  
+  
+  ########################## Wilcoxon rank-sum test
+  # Calculate the two-sided p-value
+  wilcoxp <- wilcox.test(log(x), log(y), alternative = "two.sided", paired = FALSE, exact = TRUE)$p.value
+  
+  # Add this p-value to the prior Wilcoxon p-values
+  pvalueswilcoxon <- c(pvalueswilcoxon, wilcoxp)
+}
+
+# pvalues lower than 0.01
+pvaluesttestyesno <- ifelse(pvaluesttest < 0.01, "yes", "no")
+pvalueswilcoxonyesno <- ifelse(pvalueswilcoxon < 0.01, "yes", "no")
+
+# Percentage of two-sided p-values below 0.01
+CrossTable(pvaluesttestyesno)
+CrossTable(pvalueswilcoxonyesno)
+
+# The percentage of two-sided p-values below 0.01 is 38.4% for t test and 40.6% for Wilcoxon rank-sum test. The fraction of rejected p-values is higher with a non parametric test. 
+# With the log transformation the t-test results were more powerful because transforming an exponential distribution with a log made the distribution resemble a normal distribution. However, log-transforming the data do not change the ranks and do not change the power of the Wilcoxon rank-sum test
+```
+
+
+
+
+#### (d) Is the log transformation useful for the wilcoxon test? if not, why? (5 points)
+```{r}
+# The log transformation does not change the relative ordering of the values (the ranks). Therefore, it does not change the Wilcoxon rank-sum test. Log-transforming the data is not helpful for the Wilcoxon rank-sum test
+# With the log transformation the t-test results were more powerful because transforming an exponential distribution with a log made the distribution resemble a normal distribution. However, log-transforming the data do not change the ranks and do not change the power of the Wilcoxon rank-sum test
+```
+
+
+
+
+
+
+
+
+### 3. Contingency tables (35 points)
+
+A statistical analysis that combines the results of several studies on the same subject is called a meta-analysis. A meta-analysis compared aspirin with placebo on incidence of heart attack and of stroke, separately for men and from women (J. Am. Med. Assoc., 295: 306-313, 2006). For the Women's Health Study, heart attacks were reported for 198 of 19,934 taking aspirin and for 193 of 19,942 taking placebo. We are interested in whether aspirin was helpful in reducing the risk of heart attack.
+
+
+
+
+#### (a) State the null hypothesis and the alternative hypothesis. (2 points)
+```{r}
+# Null hypothesis: The frequency of heart attack is the same in people taking aspiring and in people not taking aspirin
+# Alternative hypothesis: The frequency of heart attack is different in people taking aspirin and in people not taking aspirin
+
+## Equivalently
+# H0: ProportionofheartacttackONASPIRIN = ProportionofheartacttackONPLACEBO
+# H1: ProportionofheartacttackONASPIRIN != ProportionofheartacttackONPLACEBO
+```
+
+
+
+
+#### (b) Construct the 2 x 2 contingency table that cross classifies the treatment (aspirin, placebo) and heart attack status (yes, no). (3 points)
+```{r}
+# Create the 2X2 table
+aspirin <- c(198, 19934 - 198)
+placebo <- c(193, 19942 - 193)
+table2x2 <- data.frame(aspirin, placebo)
+rownames(table2x2) <- c("yes", "no")
+table2x2 <- data.frame(t(table2x2))
+table2x2
+```
+
+
+
+
+#### (c) Perform the chi-square test. Report the test statistic (5 points), the degrees of the freedom (5 points) and calculate the p-value without using the R chisquare built-in function (10 points). What conclusion can you draw from this test? (5 points)
+```{r}
+# The full table would be
+table2x2withtotals <- table2x2
+table2x2withtotals$total <- table2x2withtotals$yes + table2x2withtotals$no
+table2x2withtotals <- rbind(table2x2withtotals, 
+                            c(table2x2withtotals$yes[1] + table2x2withtotals$yes[2],
+                              table2x2withtotals$no[1] + table2x2withtotals$no[2],
+                              table2x2withtotals$total[1] + table2x2withtotals$total[2]))
+rownames(table2x2withtotals)[3] <- "total"
+table2x2withtotals
+
+# Assuming that the proportion of heart attack is the same in the two groups, that is, it is the same than in the whole population, the proportion would be 
+p <- table2x2withtotals$yes[3] / table2x2withtotals$total[3]
+p
+
+# Therefore, the expected proportion of heart attacks among the people who take aspirin would be
+table2x2withtotals$total[1] * p
+# Therefore, the expected proportion of heart attacks among the people who do not take aspirin would be
+table2x2withtotals$total[2] * p
+
+# Completing the table with the expected values
+yes <- c(table2x2withtotals$total[1] * p, 
+         table2x2withtotals$total[2] * p, 
+         table2x2withtotals$yes[3])
+no <- c(table2x2withtotals$total[1] - yes[1],
+        table2x2withtotals$total[2] - yes[2],
+        table2x2withtotals$no[3])
+total <- table2x2withtotals$total
+table2x2withtotalsexpected <- data.frame(yes, no, total)
+table2x2withtotalsexpected
+
+# Now we calculate observed minus expected normalized by the expected for each cell and calculate the sum
+Chisquare <- (((table2x2withtotals[1, 1] - table2x2withtotalsexpected[1, 1])^2) / table2x2withtotalsexpected[1, 1]) +
+  (((table2x2withtotals[1, 2] - table2x2withtotalsexpected[1, 2])^2) / table2x2withtotalsexpected[1, 2]) +
+  (((table2x2withtotals[2, 1] - table2x2withtotalsexpected[2, 1])^2) / table2x2withtotalsexpected[2, 1]) +
+  (((table2x2withtotals[2, 2] - table2x2withtotalsexpected[2, 2])^2) / table2x2withtotalsexpected[2, 2])
+Chisquare
+
+# The chi-square statistic is 0.06661375
+
+# Calculate p-value
+pchisq(Chisquare, df = 1, lower.tail = FALSE)
+
+# The p-value is 0.7963325
+
+# There is one degree of freedom because once one value is known in the 2X2 table the other values are fixed (can be calculated from the known value and the totals)
+
+# From the results of this test and considering a conventional alpha of 0.05 it can be stated that the null hypothesis that the frequency of heart attack is the same in people taking aspiring and in people not taking aspirin cannot be rejected
+```
+
+
+
+
+#### (d) Perform the chi-square test using R built-in function. NOTE: use correct=FALSE to obtain the same result of point (3.c). (5 points)
+```{r}
+# The full table would be
+chisq.test(table2x2, correct = FALSE)
+
+# I obtain the same results as above in c)
+```
+
+
+
+
+
+
+
+
+### Extra: Fisher's Exact Test (8 points)
+
+Consider the following example of contingency table from a study evaluating the correlation between gender and diet:
+```{r , echo=FALSE , eval=TRUE}
+mat<-matrix(NA,3,4)
+colnames(mat)<-c(" ","Diet","Non Diet","rowTotal")
+mat[1,]<-c("Men","2","10","12")
+mat[2,]<-c("Women","8","12","20")
+mat[3,]<-c("colTotal","10","22","32")
+knitr::kable(mat)
+```
+We want to test whether men are less prone to start a diet than women.
+
+
+
+
+#### (a) Display the tables that are as 'extreme' as or more extreme than the observed table (5 points)
+```{r , echo=FALSE , eval=TRUE}
+# These are the tables that are as extreme or more extreme that the original table
+mat2 <- matrix(NA,3,4)
+colnames(mat2) <- c(" ","Diet","Non Diet","rowTotal")
+mat2[1,] <- c("Men","1","11","12")
+mat2[2,] <- c("Women","9","11","20")
+mat2[3,] <- c("colTotal","10","22","32")
+knitr::kable(mat2)
+
+mat3 <- matrix(NA,3,4)
+colnames(mat3) <- c(" ","Diet","Non Diet","rowTotal")
+mat3[1,] <- c("Men","0","12","12")
+mat3[2,] <- c("Women","10","10","20")
+mat3[3,] <- c("colTotal","10","22","32")
+knitr::kable(mat3)
+```
+
+
+
+
+#### (b) Using the tables in above, calculate the probabilities to obtain the p-value of the Fisher's Exact test (3 points)
+```{r}
+# The probability of table mat is
+mat<-matrix(NA,3,4)
+colnames(mat)<-c(" ","Diet","Non Diet","rowTotal")
+mat[1,]<-c("Men","2","10","12")
+mat[2,]<-c("Women","8","12","20")
+mat[3,]<-c("colTotal","10","22","32")
+knitr::kable(mat)
+
+pmat <- (factorial(12) * factorial(20) * factorial(10) * factorial(22)) / 
+  (factorial(32) * factorial(2) * factorial(10) * factorial(8) * factorial(12))
+pmat
+
+
+# The probability of table mat2 is
+mat2 <- matrix(NA,3,4)
+colnames(mat2) <- c(" ","Diet","Non Diet","rowTotal")
+mat2[1,] <- c("Men","1","11","12")
+mat2[2,] <- c("Women","9","11","20")
+mat2[3,] <- c("colTotal","10","22","32")
+knitr::kable(mat2)
+
+pmat2 <- (factorial(12) * factorial(20) * factorial(10) * factorial(22)) / 
+  (factorial(32) * factorial(1) * factorial(11) * factorial(9) * factorial(11))
+pmat2
+
+
+# The probability of table mat3 is
+mat3 <- matrix(NA,3,4)
+colnames(mat3) <- c(" ","Diet","Non Diet","rowTotal")
+mat3[1,] <- c("Men","0","12","12")
+mat3[2,] <- c("Women","10","10","20")
+mat3[3,] <- c("colTotal","10","22","32")
+knitr::kable(mat3)
+
+pmat3 <- (factorial(12) * factorial(20) * factorial(10) * factorial(22)) / 
+  (factorial(32) * factorial(0) * factorial(12) * factorial(10) * factorial(10))
+pmat3
+
+# The p-value would be the sum of the probabilities associated with the tables as extreme or more extreme than the observed table
+p <- pmat + pmat2 + pmat3
+p
+
+# The one-sided p-value for men less prone to start a diet than women is 0.1629814
+
+## This is the same value than for the built-in method
+mat2x2 <- matrix(NA,2,2)
+colnames(mat2x2) <- c("Diet","Non Diet")
+mat2x2[1,]<-c(2, 10)
+mat2x2[2,]<-c(8, 12)
+mat2x2
+fisher.test(mat2x2, alternative = "less")
+```

@@ -1,0 +1,299 @@
+---
+title: "Homework2ISF"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+
+PROBLEM SET 2
+-------------
+-------------
+
+
+
+
+Exercise 1
+----------
+
+
+
+
+Evaluate the first 10 lines
+```{r}
+readLines("https://www.dropbox.com/s/j9a0u9p7gad1if8/monty_python_KAGGLE.txt?dl=1", 10)
+```
+1. The field separator is semicolon ";", the file is quoted, there is a header "\"index\";\"episode\";\"episode_name\";\"segment\";\"type\";\"actor\";\"character\";\"record_date\";\"series\";\"transmission_date\"" and there are comment lines like the first line "!!! Don't read me, I am not part of this file !!!"
+
+
+
+
+Load the database and check dimensions
+```{r}
+#I used skip 1 to skip line 1 which was not a line with data
+#I used fill = TRUE to assign NA to the elements missing in a line where the number of columns was smaller than the rest of lines probably because there were some missing values
+montypython <- read.table("https://www.dropbox.com/s/j9a0u9p7gad1if8/monty_python_KAGGLE.txt?dl=1", header = TRUE, sep = ";", stringsAsFactors = FALSE, quote = "", skip = 1, fill = TRUE)
+#I transform the first column to numeric
+montypython[ , 1] <- as.numeric(montypython[ , 1])
+#I delete the rows where the first column is NA (not numeric, probably a row with no values, just a commenting line)
+montypython <- montypython[!is.na(montypython[ , 1]), ]
+#Dataframe dimensions
+dim(montypython)
+```
+
+
+
+
+Find and correct the actor's weird name
+```{r}
+#I check the actors' names
+table(montypython$X.actor.)
+#One of the actors does not have any name (NA), so I substitute it to "Missing"
+montypython$X.actor. <- ifelse(montypython$X.actor. == "\"Terry", "\"Terry\"", montypython$X.actor.)
+#And I check that the name has been corrected
+table(montypython$X.actor.)
+```
+
+
+
+
+How many times each actor appears in a scene
+```{r}
+#Original table
+table(montypython$X.actor.)
+#Decreasing order of the actors (output is column name)
+order(table(montypython$X.actor.), decreasing = TRUE)
+#Reorder of the table
+reorderedtable <- table(montypython$X.actor.)[order(table(montypython$X.actor.), decreasing = TRUE)]
+#Plot
+plot(reorderedtable, main= "Appearance of actors in scenes", xlab = "Actor's name", ylab = "Number of scenes", las = 3)
+```
+
+
+
+
+Actors
+```{r}
+#Michael Palin is the actor with most appearances
+#Carol Cleveland is the actress with most appearances
+#Number of scenes with no actor/actress: 7616
+table(is.na(montypython$X.actor.))
+```
+
+
+
+
+New dataframe
+```{r}
+#Columns of interest
+newmontypython <- montypython[ , c("X.episode.", "X.episode_name.", "X.series.", "X.record_date.")]
+#Eliminate duplicate episodes
+newmontypython <- newmontypython[!duplicated(newmontypython$X.episode_name.), ]
+newmontypython[1:50, ]
+#Split the date
+parts <- t(as.data.frame(strsplit(newmontypython$X.record_date., " ")))
+#Recognize the year by position in the string
+year <- substr(parts[ , 1], 2, 5)
+year
+#Transform to numeric and include in the new database
+newmontypython$year <- as.numeric(year)
+newmontypython$X.episode. <- as.numeric(newmontypython$X.episode.)
+#Delete rows with NA
+newmontypython <- newmontypython[!is.na(newmontypython$year), ]
+#Order
+newmontypython <- newmontypython[order(c(newmontypython$year, newmontypython$X.episode.), decreasing = TRUE), ]
+#Table per year
+table(as.factor(newmontypython$year))
+```
+
+
+
+
+
+
+
+
+
+Exercise 2
+----------
+
+
+
+
+Create matrix
+```{r}
+#I create a matrix with mean 2, standard deviation as square root of the variance 3, 10 rows and 12 columns
+M <- matrix(rnorm(120, mean = 2, sd = sqrt(3)), 
+            nrow = 10, 
+            ncol = 12,
+            dimnames = list(
+              c(paste0("Row", 1 : 10)),
+              c(paste0("Column", 1 : 12))
+            ))
+```
+
+
+
+
+
+Display plots
+```{r}
+#I divide the window in a 2x2 space
+par(mfrow = c(2, 2))
+#I create the histogram with green bars
+hist(M, col = "green", main = "Histogram of the frequencies in matrix M", xlab = "Values of the matrix M")
+#I create a density plot with line width equal 2
+plot(density(M), lwd = 2, main = "Density plot of the values of matrix M", xlab = "Values of the matrix M")
+#Comparison of the data from matrix M with a normal distribution
+normalizedM <- (M - mean(M)) / sd(M)
+qqnorm(normalizedM, xlim = c(-3, 3), ylim = c(-3, 3), main = "Normal quantile-quantile plot")
+abline(0,1, col = "red")
+#I create 2 boxplots with the distribution of the row and column means
+boxplot(rowMeans(M), colMeans(M), names = c("Mean rows", "Mean columns"), main = "Distribution of the row and column means", xlab = "Names of the boxes", ylab = "Values")
+```
+
+
+
+
+Exercise 3
+----------
+
+
+
+
+Classify the elements of the dataframe based on values
+```{r}
+#I create a new variable "size"" and assign "small" to elements with both petal length and width below the first quartile
+iris$size[iris$Petal.Length < quantile(iris$Petal.Length, 0.25) & iris$Petal.Width < quantile(iris$Petal.Width, 0.25)] <- "small"
+#I assign "large" to elements with both petal length and width above the third quartile
+iris$size[iris$Petal.Length > quantile(iris$Petal.Length, 0.75) & iris$Petal.Width > quantile(iris$Petal.Width, 0.75)] <- "large"
+#I assign "normal" to elements with either petal length or width between the first and the third quartiles
+iris$size[(iris$Petal.Length >= quantile(iris$Petal.Length, 0.25) & iris$Petal.Length <= quantile(iris$Petal.Length, 0.75)) |
+            (iris$Petal.Width >= quantile(iris$Petal.Width, 0.25) & iris$Petal.Width <= quantile(iris$Petal.Width, 0.75))] <- "normal"
+```
+
+
+
+
+Display the scatterplot
+```{r}
+# I transform "size" into a factor variable
+iris$size <- as.factor(iris$size)
+#I evaluate the order of the factor levels and set the palette accordingly
+levels(iris$size)
+palette(c("red", "gray", "blue"))
+#I draw the plot
+plot(iris$Petal.Length, iris$Petal.Width, col = iris$size, pch = 19, 
+     xlim = c(min(iris$Petal.Length) - 1, max(iris$Petal.Length) + 1),
+     ylim = c(min(iris$Petal.Width) - 1, max(iris$Petal.Width) + 1),
+     main = "Figure of the Iris dataset classified by size",
+     xlab = "Iris petal length",
+     ylab = "Iris petal width"
+       )
+#This coming line is not necessary as can be plotted without the points() function, but we were asked to use the points() function
+points(iris$Petal.Length, iris$Petal.Width, pch = 19, col = iris$size)
+#I create the lines representing the quantiles
+abline(v = quantile(iris$Petal.Length, 0.25), col = "green", lty = 2)
+abline(v = quantile(iris$Petal.Length, 0.75), col = "green", lty = 2)
+abline(h = quantile(iris$Petal.Width, 0.25), col = "green", lty = 2)
+abline(h = quantile(iris$Petal.Width, 0.75), col = "green", lty = 2)
+
+legend("bottomright",c('Small','Normal', 'Large'),col=c("blue", "gray", "red"), pch = c(19, 19, 19))
+```
+
+
+
+
+Exercise 4
+----------
+
+
+
+
+Create the new dataframe
+```{r}
+#I already created that column above in exercise 3 but I repeat it here
+#I create a new variable "size"" and assign "small" to elements with both petal length and width below the first quartile
+iris$size[iris$Petal.Length < quantile(iris$Petal.Length, 0.25) & iris$Petal.Width < quantile(iris$Petal.Width, 0.25)] <- "small"
+#I assign "large" to elements with both petal length and width above the third quartile
+iris$size[iris$Petal.Length > quantile(iris$Petal.Length, 0.75) & iris$Petal.Width > quantile(iris$Petal.Width, 0.75)] <- "large"
+#I assign "normal" to elements with either petal length or width between the first and the third quartiles
+iris$size[(iris$Petal.Length >= quantile(iris$Petal.Length, 0.25) & iris$Petal.Length <= quantile(iris$Petal.Length, 0.75)) |
+            (iris$Petal.Width >= quantile(iris$Petal.Width, 0.25) & iris$Petal.Width <= quantile(iris$Petal.Width, 0.75))] <- "normal"
+# I transform "size" into a factor variable
+iris$size <- factor(iris$size, levels = c("small", "normal", "large"))
+
+#Rename dataframe
+SV_iris <- iris
+#I create the matrix
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+plot(SV_iris$size, col = "green", main = "Iris size", xlab = "Iris size", ylab = "Frequency")
+boxplot(SV_iris[SV_iris$size == "small", ]$Sepal.Length, 
+        SV_iris[SV_iris$size == "normal", ]$Sepal.Length,
+        SV_iris[SV_iris$size == "large", ]$Sepal.Length,
+        names = c("Small", "Normal", "Large"),
+        main = "Sepal length", xlab = "Iris size", ylab = "Sepal length")
+boxplot(SV_iris[SV_iris$size == "small", ]$Sepal.Width, 
+        SV_iris[SV_iris$size == "normal", ]$Sepal.Width,
+        SV_iris[SV_iris$size == "large", ]$Sepal.Width,
+        names = c("Small", "Normal", "Large"),
+        main = "Sepal width", xlab = "Iris size", ylab = "Sepal width")
+```
+
+
+
+
+Exercise 5
+----------
+
+
+
+
+Classify the elements of the dataframe based on values
+```{r}
+#I divide the window in a 2x3 space
+par(mfrow = c(2, 3))
+
+#The first 4 columns are numeric and I make sure they are numeric
+numericiris <- iris[ , 1 : 4]
+for (i in 1 : dim(numericiris)[2]) {
+  numericiris[ , i] <- as.numeric(numericiris[ , i])
+}
+
+#I create the for loop
+for (i in 1 : (dim(numericiris)[2] - 1)) {
+  x <- numericiris[ , i]
+  for (j in (i + 1) : dim(numericiris)[2]) {
+    y = numericiris[ , j]
+    plot(x, y, xlab = colnames(numericiris)[i], ylab = colnames(numericiris)[j], main = cor.test(x, y)$p.value)
+    if (cor.test(x, y)$p.value >= 0.05) {
+      lines(lowess(x, y), lwd = 2, col = "blue")
+    } else {
+      lines(lowess(x, y), lwd = 2, col = "red")
+    }
+  }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

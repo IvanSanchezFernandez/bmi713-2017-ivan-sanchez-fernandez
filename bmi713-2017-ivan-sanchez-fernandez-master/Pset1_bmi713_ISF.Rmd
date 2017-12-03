@@ -1,0 +1,689 @@
+BMI713 Problem Set 1
+--------------------
+--------------------
+
+
+Ivan Sanchez Fernandez
+----------------------
+
+
+
+
+#### Instructions:
+Please submit this problem set before class on Tuesday, October 31. Problem sets may be submitted within a week past the due date at a 20% penalty; each person is allowed to submit one problem late (within a week) without penalty. Please comment your code, because it is part of the requirements of each exercise. Missing comments will not allow the full score.
+
+If you have any questions, please post on the piazza site. This problem set was prepared by Tiziana Sanavia and Giorgio Melloni, so they will be most prepared to answer questions.
+
+# 1. Random variables and distributions (points: 30)
+
+A. Assume that a die is fair, i.e. if the die is rolled once, the probability of getting each of the six numbers is 1/6. Calculate the probability of the following events.
+
+* Rolling the die once, what is the probability of getting a number less than 4? (points: 5)
+```{r}
+# The probability of getting a number less than 4 in one roll is the probability of getting 1 or 2 or 3 in the single roll
+# As the probability of getting each number is 1/6, then the probability would be
+(1/6) + (1/6) + (1/6)
+
+# Using the commands in class the probability of getting each number is 
+dbinom(1, 1, p = 1/6)
+#and the probability of either 1, 2, or 3 would be 
+dbinom(1, 1, p = 1/6) + dbinom(1, 1, p = 1/6) + dbinom(1, 1, p = 1/6)
+#or 
+dbinom(1, 1, p = 1/6) * 3
+
+# There is as specific R package (dice) for this
+#install.packages("dice")
+library(dice)
+
+# Rolling die once, probability of getting a number less than 4
+getEventProb(nrolls = 1, ndicePerRoll = 1, nsidesPerDie = 6, eventList = list(1:3), orderMatters = FALSE)
+
+# ANSWER = 0.5
+```
+
+
+
+
+* Rolling the die twice, what is the probability that the sum of two rolling numbers is less than 4? (points: 7)
+```{r}
+# The probability of getting a number less than 4 in two rolls is the probability of getting 1 in one die and 1 or 2 in the other for each die (times 2)
+# The probability of getting 1 in one die is 1/6 times the probability of getting either 1 or 2 in the other (1/6 + 1/6) times 2: ((1/6) * (1/6 + 1/6)) * 2
+((1/6) * (1/6 + 1/6)) * 2
+
+
+#Which is the same as the probability of getting 1 in the first die and 1 in the second
+(1/6) * (1/6)
+#plus the probability of getting 1 in the first die in 2 in the second
+(1/6) * (1/6)
+#or the same but with 1 in the second die
+(1/6) * (1/6) * 2 * 2
+
+
+## Which is the same as all the possible combinations:
+#die 1 results in 1 and die 2 in 1 for a total of 2
+#die 1 results in 1 and die 2 in 2 for a total of 3
+#die 1 results in 1 and die 2 in 1 for a total of 2
+#die 1 results in 2 and die 2 in 1 for a total of 3
+# Each of the above possibilities are 1/6 * 1/6, so the total is 1/6 * 1/6 * 4
+(1/6) * (1/6) * 4
+# or 
+dbinom(1, 1, p = 1/6) * dbinom(1, 1, p = 1/6) * 4
+
+
+# Rolling die twice, probability of getting a number less than 4
+getEventProb(nrolls = 2, ndicePerRoll = 1, nsidesPerDie = 6, eventList = list(1:2, 1:2), orderMatters = FALSE)
+
+
+# ANSWER = 0.1111111
+```
+
+
+
+
+B. Let $p$ be the probability of obtaining a head when flipping a coin. Suppose that Jake flipped the coin $n$ $(n \ge 1)$ times. Let $X$ be the total number of head he obtained.
+
+* What distribution does the random variable $X$ follow? Is $X$ a discrete or continuous random variable? (points: 5)
+```{r}
+# ANSWER: The random variable X follows a binomial distribution because there are only two possible outcomes: heads or tails. X is a discrete random variable with two outcomes: heads or tails.
+```
+
+
+
+
+* What is the probability of getting k heads when flipping the coin n times, i.e. what is $Pr(X = k)$ $(0 \le k \le n)$? (Write down the mathematical formula for calculating this probability.) (points: 5)
+
+$$P(X = k) = {n \choose x} * p^k * (1-p)^{n-k}$$
+
+
+
+
+* Suppose p = 0.2 and n = 20. Calculate the probabilities $Pr(X = 4)$ and $Pr(X \ge 4)$. (You may need the functions `dbinom` and `pbinom` in R to calculate these two probabilities. Use `?dbinom` and `?pbinom` to get help information of these two functions). (points: 8)
+```{r}
+# With a 0.2 probability (unfair coin) and 20 trials, 
+# P(X = 4)
+dbinom(4, 20, prob = 0.2)
+# ANSWER = 0.2181994
+
+# P(X >= 4)
+pbinom(4, 20, prob = 0.2, lower.tail = FALSE)
+1 - pbinom(4, 20, prob = 0.2, lower.tail = TRUE)
+# ANSWER = 0.3703517
+```
+
+
+
+
+# 2. Normal Distribution and Z-score (points: 40)
+
+A. The so-called BMI (Body Mass Index) is a measure of the weight-height-relation, and it is defined as the weight (W) in kg divided by the squared height (H) in meters:
+
+$$BMI=\frac{W}{H^{2}}$$
+
+Assume that the population distribution of BMI is log-normal, therefore log(BMI) is a normal distribution with mean = 2.5 and variance = 2.25.
+
+* Plot in R the density and the cumulative probability curves of log(BMI) as in the picture, using commands `dnorm` and `pnorm`: (points: 4)
+```{r}
+# Make results reproducible setting the seed to, for example, 1
+set.seed(1)
+
+# Create x values from -2 to 7 with very small intervals 0.01 so that the line appears continuous as in the figure
+x <- seq(from = -2, to = 7, by = 0.01)
+
+# Plot the density curve
+plot(x, dnorm(x, mean = 2.5, sd = 2.25), type = "l", xlab = "X", ylab = "Density", main = "Density curve")
+
+# Plot the cumulative probability curve
+plot(x, pnorm(x, mean = 2.5, sd = 2.25), type = "l", xlab = "X", ylab = "Cumulative probability", main = "Cumulative probability curve")
+
+# Put them together in the same window
+par(mfrow = c(1, 2))
+plot(x, dnorm(x, mean = 2.5, sd = 2.25), type = "l", xlab = "X", ylab = "Density", main = "Density curve")
+plot(x, pnorm(x, mean = 2.5, sd = 2.25), type = "l", xlab = "X", ylab = "Cumulative probability", main = "Cumulative probability curve")
+```
+
+
+
+
+* Using the cumulative probability, calculate in R the area under the density curve between x=0.5 and x=4. Use R code for the calculation. (points: 6)
+```{r}
+# Calculate the area under the cumulative curve to the left of 4 minus the area under the cumulative curve to the left of 0.5
+pnorm(4, mean = 2.5, sd = 2.25, lower.tail = TRUE) - pnorm(0.5, mean = 2.5, sd = 2.25, lower.tail = TRUE)
+# ANSWER = 0.5604761
+```
+
+
+
+
+* A definition of "being obese" is a BMI-value of at least 30. How large a proportion of the population would then be obese? (points: 6)
+```{r}
+# Calculate the area under the area of the cumulative distribution to the right of 30
+# Transform the value from BMI to log(BMI) as the distribution is log(BMI)
+1 - pnorm(log(30), mean = 2.5, sd = 2.25, lower.tail = TRUE) 
+pnorm(log(30), mean = 2.5, sd = 2.25, lower.tail = FALSE) 
+# ANSWER = 0.3443823
+```
+
+
+
+
+* The 90th percentile of the BMI is the value such that 90% of the population has a BMI lower than this value. Find the 90th percentile for log(BMI) using `qnorm`. (points: 6)
+```{r}
+# Calculate the percentile under which 90% of the population is
+qnorm(0.9, mean = 2.5, sd = 2.25, lower.tail = TRUE) 
+# ANSWER (log BMI) = 5.383491
+
+# Results in BMI
+exp(qnorm(0.9, mean = 2.5, sd = 2.25, lower.tail = TRUE)) 
+# ANSWER (BMI) = 217.7812
+
+## The results for BMI do not make much biological sense, but the mean BMI of exp(2.5) = 12.18249 does not make much biological sense either, so I assume that the values are made up and not expected to represent reality in any population
+```
+
+
+
+
+B. Assume that blood-glucose levels in a population of adult women are normally distributed with mean 90 mg/dL and standard deviation 38 mg/dL. Answer the following questions:
+
+* What percentage of women shows levels above or equal to 80.5 mg/dL? (points: 6)
+```{r}
+# Percentage of the population equal or above 80.5 mg/dL
+# Probability multiplied by 100 as the question asks for a percentage
+(1- pnorm(80.5, mean = 90, sd = 38, lower.tail = TRUE)) * 100
+pnorm(80.5, mean = 90, sd = 38, lower.tail = FALSE) * 100
+# ANSWER (BMI) = 59.87063
+```
+
+
+
+
+* Suppose that the "abnormal range" is defined to be glucose levels which are 1.5 standard deviations above the mean or 1.5 standard deviations below the mean. What percentage of women would be classified "abnormal"? (points: 6)
+```{r}
+# Percentage above or below 1.5 standard deviations
+# Probability multiplied by 100 as the question asks for a percentage
+(pnorm(90 - (1.5 * 38), mean = 90, sd = 38, lower.tail = TRUE) + pnorm(90 + (1.5 * 38), mean = 90, sd = 38, lower.tail = FALSE))* 100
+pnorm(90 - (1.5 * 38), mean = 90, sd = 38, lower.tail = TRUE) * 2 * 100
+# ANSWER (BMI) = 13.36144
+```
+
+
+
+
+* Suppose now that we want to redefine the abnormal range to be more than 'c' standard deviations above the mean or less than 'c' standard deviations with 'c' chosen so that 4 % of the population will be classified as abnormal. What should 'c' be? (points: 6)
+```{r}
+# 4% abnormal is 0.04 total or 0.02 in each tail
+qnorm(0.04 / 2, mean = 90, sd = 38, lower.tail = TRUE)
+# The lower point of this range would be 11.95754
+# So mean - c*sd = 11.95754
+# 90 - c*38 = 11.95754
+# c = (90 - 11.95754) / 38
+(90 - 11.95754) / 38
+# ANSWER = 2.053749
+
+# And to check that this is correct 
+(pnorm(90 - (2.053749 * 38), mean = 90, sd = 38, lower.tail = TRUE) + pnorm(90 + (2.053749 * 38), mean = 90, sd = 38, lower.tail = FALSE))* 100
+# Gives 4% of the population
+```
+
+
+
+
+# 3. Simulation of distributions of random variables (points: 30)
+
+Consider $X$ a random variable from any distribution with mean $\mu$ and variance $\sigma^2$.
+
+If we sample $n$ values from that distribution, we can calculate the mean value $\bar{x_n}$ which is itself the realization 
+of a random variable $\bar{X_n}$.
+
+In this exercise we will evaluate some properties of the: 
+
+## 3.1 Normal Distribution (points: 15)
+
+Using `rnorm` create a vector of 1000 values from a normal distribution with $\mu=0$ and $\sigma=1$. We call this vector $m0$. (points: 1)
+```{r}
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+m0 <- rnorm(1000, mean = 0, sd = 1)
+m0[1:20]
+```
+
+
+
+
+Using the same command, create a vector of $N=1000$ mean values from a random sampling of $n=10, 100$ and $1000$ elements. (points: 1)
+We will call these vectors $m10$, $m100$, $m1000$.
+```{r}
+# For m10
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+m10 <- vector()
+for (i in 1 : 1000) {
+  m10 <- c(m10, mean(rnorm(10, mean = 0, sd = 1)))
+}
+m10[1:20]
+
+
+# For m100
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+m100 <- vector()
+for (i in 1 : 1000) {
+  m100 <- c(m100, mean(rnorm(100, mean = 0, sd = 1)))
+}
+m100[1:20]
+
+
+# For m1000
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+m1000 <- vector()
+for (i in 1 : 1000) {
+  m1000 <- c(m1000, mean(rnorm(1000, mean = 0, sd = 1)))
+}
+m1000[1:20]
+```
+
+
+
+
+Create a 4 panels plot (You can use an histogram or a density plot or both) showing the distributions of: (points: 2)
+
+1) The 1000 values from the distribution ($m0$)
+2) The 1000 means using n = 10 ($m10$)
+3) The 1000 means using n = 100 ($m100$)
+4) The 1000 means using n = 1000 ($m1000$)
+```{r}
+# Plot the histogram for m0
+hist(m0, xlab = "m0 values", ylab = "Frequency", main = "Histogram of m0 values")
+
+# Plot the histogram for m10
+hist(m10, xlab = "m10 values", ylab = "Frequency", main = "Histogram of m10 values")
+
+# Plot the histogram for m100
+hist(m100, xlab = "m100 values", ylab = "Frequency", main = "Histogram of m100 values")
+
+# Plot the histogram for m1000
+hist(m1000, xlab = "m1000 values", ylab = "Frequency", main = "Histogram of m1000 values")
+
+# Put them together in the same window
+par(mfrow = c(2, 2))
+hist(m0, xlab = "m0 values", ylab = "Frequency", main = "Histogram of m0 values")
+hist(m10, xlab = "m10 values", ylab = "Frequency", main = "Histogram of m10 values")
+hist(m100, xlab = "m100 values", ylab = "Frequency", main = "Histogram of m100 values")
+hist(m1000, xlab = "m1000 values", ylab = "Frequency", main = "Histogram of m1000 values")
+```
+
+
+
+
+Using the function `qqnorm`, compare theoretical and sample quantiles of a normal distribution. Do the distributions look normal? (points: 3)
+```{r}
+# Plot the qqplot for m0
+qqnorm(m0, main = "Normal quantile-quantile plot for m0")
+
+# Plot the qqplot for m10
+qqnorm(m10, main = "Normal quantile-quantile plot for m10")
+
+# Plot the qqplot for m100
+qqnorm(m100, main = "Normal quantile-quantile plot for m100")
+
+# Plot the qqplot for m1000
+qqnorm(m1000, main = "Normal quantile-quantile plot for m1000")
+
+# Put them together in the same window
+par(mfrow = c(2, 2))
+qqnorm(m0, main = "Normal quantile-quantile plot for m0")
+qqnorm(m10, main = "Normal quantile-quantile plot for m10")
+qqnorm(m100, main = "Normal quantile-quantile plot for m100")
+qqnorm(m1000, main = "Normal quantile-quantile plot for m1000")
+
+## ANSWER: All distributions look normal
+```
+
+
+
+
+Now evaluate the value of the mean and variance of each of the 4 vectors. 
+
+* Are the means substantially different from each other? (points: 2)
+```{r}
+# Mean and variance for m0
+mean(m0)
+var(m0)
+
+# Mean and variance for m10
+mean(m10)
+var(m10)
+
+# Mean and variance for m100
+mean(m100)
+var(m100)
+
+# Mean and variance for m1000
+mean(m1000)
+var(m1000)
+
+# ANSWER: Means are quite close to the true population mean of 0, but the larger the sample size, the closer to 0 (the real population mean)
+```
+
+
+
+
+* Are the variances different from each other? If yes, what is the ratio between $Var(m0)$ and the other variances? (e.g., $Var(m0)/Var(m10)$ , $Var(m0)/Var(m100)$) (points: 3)
+```{r}
+# Mean and variance for m0
+mean(m0)
+var(m0)
+
+# Mean and variance for m10
+mean(m10)
+var(m10)
+
+# Mean and variance for m100
+mean(m100)
+var(m100)
+
+# Mean and variance for m1000
+mean(m1000)
+var(m1000)
+
+# ANSWER: Variances are different from each other. The larger the sample size, the less variability, and the smaller the value of the variance
+
+# Ratio variances m0/m10
+var(m0) / var(m10)
+
+# Ratio variances m0/m100
+var(m0) / var(m100)
+
+# Ratio variances m0/m1000
+var(m0) / var(m1000)
+
+# ANSWER: The larger the sample size, the greater the ratio m0 to the rest. This shows that the larger the sample size, the less variability there is around the mean
+```
+
+
+
+
+* If you see any pattern, can you derive a general formula to derive the Variance of any distribution of the means $\bar{X_n}$ for any given $n$ (points: 3)
+```{r}
+# Ratio variances m0/m10
+var(m0) / var(m10)
+
+# Ratio variances m0/m100
+var(m0) / var(m100)
+
+# Ratio variances m0/m1000
+var(m0) / var(m1000)
+
+# ANSWER: There appears to be a 10 fold increase for each 10 fold increase in the sample size. So the formula would be Var(m0) / Var(m100) = 10 * Var(m0) / Var(m10)
+# If this relation is true, then the general formula would be approximately Var(mx) = x * Var(m0)
+# Let's check it out with a couple of different n values
+
+# For 150 the ratio should be approximately 150
+
+# For m150
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+m150 <- vector()
+for (i in 1 : 1000) {
+  m150 <- c(m150, mean(rnorm(150, mean = 0, sd = 1)))
+}
+m150[1:20]
+
+var(m0) / var(m150)
+var(m0) * 150
+
+
+# For 200 the ratio should be approximately 200
+
+# For m200
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+m200 <- vector()
+for (i in 1 : 1000) {
+  m200 <- c(m200, mean(rnorm(200, mean = 0, sd = 1)))
+}
+m200[1:20]
+
+var(m0) / var(m200)
+var(m0) * 200
+
+## The formula is (approximately) true
+```
+
+
+
+
+## 3.2 Non-normal distribution (points: 15, evaluated as 3.1)
+
+Repeat the exercise 3.1 but using a different random variable following the exponential distribution, $f(x) = \lambda e^{-\lambda x}$. To run this simulation use the function `rexp` with rate (i.e. $\lambda$) value **1**.
+```{r}
+# For exp0
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+exp0 <- rexp(1000, rate = 1)
+exp0[1:20]
+
+
+# For exp10
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+exp10 <- vector()
+for (i in 1 : 1000) {
+  exp10 <- c(exp10, mean(rexp(10, rate = 1)))
+}
+exp10[1:20]
+
+
+# For exp100
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+exp100 <- vector()
+for (i in 1 : 1000) {
+  exp100 <- c(exp100, mean(rexp(100, rate = 1)))
+}
+exp100[1:20]
+
+
+# For exp1000
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+exp1000 <- vector()
+for (i in 1 : 1000) {
+  exp1000 <- c(exp1000, mean(rexp(1000, rate = 1)))
+}
+exp1000[1:20]
+```
+
+
+
+
+* Plot the distribution of the 4 vectors
+```{r}
+# Plot the histogram for exp0
+hist(exp0, xlab = "exp0 values", ylab = "Frequency", main = "Histogram of exp0 values")
+
+# Plot the histogram for exp10
+hist(exp10, xlab = "exp10 values", ylab = "Frequency", main = "Histogram of exp10 values")
+
+# Plot the histogram for exp100
+hist(exp100, xlab = "exp100 values", ylab = "Frequency", main = "Histogram of exp100 values")
+
+# Plot the histogram for exp1000
+hist(exp1000, xlab = "exp1000 values", ylab = "Frequency", main = "Histogram of exp1000 values")
+
+# Put them together in the same window
+par(mfrow = c(2, 2))
+hist(exp0, xlab = "exp0 values", ylab = "Frequency", main = "Histogram of exp0 values")
+hist(exp10, xlab = "exp10 values", ylab = "Frequency", main = "Histogram of exp10 values")
+hist(exp100, xlab = "exp100 values", ylab = "Frequency", main = "Histogram of exp100 values")
+hist(exp1000, xlab = "exp1000 values", ylab = "Frequency", main = "Histogram of exp1000 values")
+
+# In this case, the original distribution m0 is not normal, but sampling from it the distribution of the means is normal and much more normal the larger the sample: central limit theorem
+```
+
+
+
+
+* Using `qqnorm` like above, evaluate normality. Are the exponential values normally distributed? What about the means?
+```{r}
+# Plot the qqplot for exp0
+qqnorm(exp0, main = "Normal quantile-quantile plot for exp0")
+
+# Plot the qqplot for exp10
+qqnorm(exp10, main = "Normal quantile-quantile plot for exp10")
+
+# Plot the qqplot for exp100
+qqnorm(exp100, main = "Normal quantile-quantile plot for exp100")
+
+# Plot the qqplot for exp1000
+qqnorm(exp1000, main = "Normal quantile-quantile plot for exp1000")
+
+# Put them together in the same window
+par(mfrow = c(2, 2))
+qqnorm(exp0, main = "Normal quantile-quantile plot for exp0")
+qqnorm(exp10, main = "Normal quantile-quantile plot for exp10")
+qqnorm(exp100, main = "Normal quantile-quantile plot for exp100")
+qqnorm(exp1000, main = "Normal quantile-quantile plot for exp1000")
+
+## ANSWER: exp0 looks not normal and the other distributions look more normal as the sample size increases. The original distribution m0 is not normal, but sampling from it the distribution of the means is normal and much more normal the larger the sample: central limit theorem
+```
+
+
+
+
+```{r}
+# Mean and variance for exp0
+mean(exp0)
+var(exp0)
+
+# Mean and variance for exp10
+mean(exp10)
+var(exp10)
+
+# Mean and variance for exp100
+mean(exp100)
+var(exp100)
+
+# Mean and variance for exp1000
+mean(exp1000)
+var(exp1000)
+
+# ANSWER: Means are quite close to the true population mean of 1, but the larger the sample size, the closer to 1 (the real population mean)
+```
+
+* Evaluate mean and variance as above
+```{r}
+# Mean and variance for exp0
+mean(exp0)
+var(exp0)
+
+# Mean and variance for exp10
+mean(exp10)
+var(exp10)
+
+# Mean and variance for exp100
+mean(exp100)
+var(exp100)
+
+# Mean and variance for exp1000
+mean(exp1000)
+var(exp1000)
+
+# ANSWER: Variances are different from each other. The larger the sample size, the less variability, and the smaller the value of the variance
+
+# Ratio variances m0/m10
+var(exp0) / var(exp10)
+
+# Ratio variances m0/m100
+var(exp0) / var(exp100)
+
+# Ratio variances m0/m1000
+var(exp0) / var(exp1000)
+
+# ANSWER: The larger the sample size, the greater the ratio m0 to the rest. This shows that the larger the sample size, the less variability there is around the mean
+```
+
+
+
+
+```{r}
+# Ratio variances m0/m10
+var(exp0) / var(exp10)
+
+# Ratio variances m0/m100
+var(exp0) / var(exp100)
+
+# Ratio variances m0/m1000
+var(exp0) / var(exp1000)
+
+# ANSWER: There appears to be a 100 fold increase for each ten fold increase in the sample size. So the formula would be Var(m0) / Var(m100) = 100 * Var(m0) / Var(m10)
+# If this relation is true, then the general formula would be approximately Var(mx) = x * Var(m0)
+# Let's check it out with a couple of different n values
+
+# For 150 the ratio should be approximately 150
+
+# For exp150
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+exp150 <- vector()
+for (i in 1 : 1000) {
+  exp150 <- c(exp150, mean(rexp(150, rate = 1)))
+}
+exp150[1:20]
+
+var(exp0) / var(exp150)
+var(exp0) * 150
+
+
+# For 200 the ratio should be approximately 200
+
+# For exp200
+
+# Set seed to 1 for reproducibility
+set.seed(1)
+
+# Enter the data to create the vector and check that results look reasonable
+exp200 <- vector()
+for (i in 1 : 1000) {
+  exp200 <- c(exp200, mean(rexp(200, rate = 1)))
+}
+exp200[1:20]
+
+var(exp0) / var(exp200)
+var(exp0) * 200
+
+# This formula yields results that are quite similar to reality
+```
+

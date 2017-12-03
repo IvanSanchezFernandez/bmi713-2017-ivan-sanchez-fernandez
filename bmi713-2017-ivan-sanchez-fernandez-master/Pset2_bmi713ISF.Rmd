@@ -1,0 +1,526 @@
+---
+title: "BMI713 Problem Set 2"
+output:
+  html_document: default
+  pdf_document: default
+---
+Ivan Sanchez Fernandez HUID: 408553270
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Instructions:
+Please submit this problem set before class on Tuesday, November 7. Problem sets may be submitted within a week past the due date at a 20\% penalty per day; each person is allowed to submit one problem late (within a week) without penalty. It is required that you comment your code. Missing comments will not allow you to receive full credit .
+
+If you have any questions, please post on the piazza site. This problem set was prepared by Jacob Luber and Eric Bartell, so they will be most prepared to answer questions.
+
+\section{1. Hypothesis Testing (19 Points Total)}
+You are testing a new cancer therapeutic approach that combines chemotherapy and radiation in mouse models with human tumor xenografts. Assume that you have the ability to obtain an arbitrary number of identical mice. Your new approach seems to shrink the tumors about half of the time. For this question, conduct your tests in R.
+\subsection{(3 points)} You apply the treatment to 5 mice, observing 2 with smaller tumors. Test whether the approach shrinks tumors in half of mice, i.e. $H_0: p = 0.5$. Subsequently, answer whether or not the null hypothesis can be rejected.
+```{r}
+# The distribution is binomial because there are only 2 possible outcomes: shrinking tumor or not shrinking tumor
+# The probability of having 2 out of 5 mice with smaller tumor (or something more extreme) one-sided when the probability is 0.5 is
+pbinom(q = 2, size = 5, prob = 0.5)
+# 0.5.
+# As it is 2-sided it is 
+pbinom(q = 2, size = 5, prob = 0.5) * 2
+# 1.
+#The p-value, that is, the probability of obtaining this result (or something more extreme) is higher than 0.05. Therefore, the null hypothesis cannot be rejected.
+
+# This is confirmed comparing the actual successes among the number of trials under the null hypothesis of probability being 0.5
+binom.test(x = 2, n = 5, p = 0.5, alternative = "two.sided", conf.level = 0.95)
+# The 95% CI for the probability (0.05274495 0.85336720) includes the null value of 0.5 and the p-value is greater than 0.05. Therefore, we cannot reject the null hypothesis that the probability is 0.5.
+```
+
+
+
+
+\subsection{(4 points)} You apply treatment to 10 mice and observe 4 with smaller tumors. Test whether the approach shrinks tumors in half of mice, i.e. $H_0: p = 0.5$. Subsequently, answer whether or not the null hypothesis can be rejected.
+```{r}
+# The distribution is binomial because there are only 2 possible outcomes: shrinking tumor or not shrinking tumor
+# The probability of having 4 out of 10 mice with smaller tumor (or something more extreme) one-sided when the probability is 0.5 is
+pbinom(q = 4, size = 10, prob = 0.5)
+# 0.3769531.
+# As it is 2-sided it is 
+pbinom(q = 4, size = 10, prob = 0.5) * 2
+# 0.7539063.
+#The p-value, that is, the probability of obtaining this result (or something more extreme) is higher than 0.05. Therefore, the null hypothesis cannot be rejected.
+
+# This is confirmed comparing the actual successes among the number of trials under the null hypothesis of probability being 0.5
+binom.test(x = 4, n = 10, p = 0.5, alternative = "two.sided", conf.level = 0.95)
+# The 95% CI for the probability (0.1215523 0.7376219) includes the null value of 0.5 and the p-value is greater than 0.05. Therefore, we cannot reject the null hypothesis that the probability is 0.5.
+```
+
+
+
+
+\subsection{(4 points)} You apply treatment to 100 mice and observe 40 with tumor shrinkage. Test whether the approach shrinks tumors in half of mice, i.e. $H_0: p = 0.5$. Subsequently, answer whether or not the null hypothesis can be rejected.
+```{r}
+# The distribution is binomial because there are only 2 possible outcomes: shrinking tumor or not shrinking tumor
+# The probability of having 40 out of 100 mice with smaller tumor (or something more extreme) one-sided when the probability is 0.5 is
+pbinom(q = 40, size = 100, prob = 0.5)
+# 0.02844397.
+# As it is 2-sided it is 
+pbinom(q = 40, size = 100, prob = 0.5) * 2
+# 0.05688793.
+#The p-value, that is, the probability of obtaining this result (or something more extreme) is higher than 0.05. Therefore, the null hypothesis cannot be rejected.
+
+# This is confirmed comparing the actual successes among the number of trials under the null hypothesis of probability being 0.5
+binom.test(x = 40, n = 100, p = 0.5, alternative = "two.sided", conf.level = 0.95)
+# The 95% CI for the probability (0.3032948 0.5027908) includes the null value of 0.5 and the p-value is greater than 0.05. Therefore, we cannot reject the null hypothesis that the probability is 0.5.
+```
+
+
+
+
+\subsection{(4 points)} You repeat this test by applying treatment to 1000 mice and observe 400 with smaller tumors. Test whether the approach shrinks tumors in half of mice, i.e. $H_0: p = 0.5$. Subsequently, answer whether or not the null hypothesis can be rejected. 
+```{r}
+# The distribution is binomial because there are only 2 possible outcomes: shrinking tumor or not shrinking tumor
+# The probability of having 400 out of 1000 mice with smaller tumor (or something more extreme) one-sided when the probability is 0.5 is
+pbinom(q = 400, size = 1000, prob = 0.5)
+# 1.364232e-10.
+# As it is 2-sided it is 
+pbinom(q = 400, size = 1000, prob = 0.5) * 2
+# 2.728464e-10.
+#The p-value, that is, the probability of obtaining this result (or something more extreme) is smaller than 0.05. Therefore, the null hypothesis is rejected.
+
+# This is confirmed comparing the actual successes among the number of trials under the null hypothesis of probability being 0.5
+binom.test(x = 400, n = 1000, p = 0.5, alternative = "two.sided", conf.level = 0.95)
+# The 95% CI for the probability (0.3694690 0.4311216) does not include the null value of 0.5 and the p-value is smaller than 0.05. Therefore, we reject the null hypothesis that the probability is 0.5.
+```
+
+
+
+
+\subsection{(4 points)}
+What do you notice happening as we increase the total number of mice treated? Explain why what you are observing is occurring.
+```{r}
+# As we increase the sample size the 95% CI interval becomes narrower, and the p-values become smaller. This happens because the observed probability (0.4 for all of the above problems) is different than 0.5. However, if the sample size is not large enough there is not enough power to demonstrate an statistically significant difference (that the observed difference between probabilities is not just by chance). As the sample size gets larger, the probability of 0.4 has less uncertainty around it and it can be shown that it is statistically significant different than 0.5. With smaller sample sizes there is too much uncertainty around it and its confidence interval overlaps with 0.5. 
+```
+
+
+
+
+
+
+
+
+\section{2. Group Comparison (25 Points Total)}
+You are working on a microbial genetics project and are testing a new supplement that you add to your basic agar culturing plates that a collaborator mentioned greatly increases the observable number of CFUs (colony forming units) for the strain that you are studying on the plates \textit{24 hours after incubation}. You plan to culture 10 of both your \underline{treatment} and \underline{control} plates and enlist a laboratory technician to help you. 
+
+
+Unfortunately, they accidentally forget to put 1 of the treatment plates and 2 of the control plates in the incubator, leaving you with the following results 24 hours later:
+\begin{center}
+  \begin{tabular}{ | r | r | r | r | }
+    \hline
+    Group & CFUs & Sample Size & Mean $(\bar{x})$ \\ \hline\hline
+    Treatment & 10 12 8 16 22 4 7 2 9 & 9  & 10\\ \hline
+    Control & 1 30 45 20 12 20 32 40 & 8 & 25 \\
+    \hline
+  \end{tabular}
+\end{center}
+\subsection{Stating Your Hypothesis (5 points)}
+Prior to performing the experiment, what is hypothesis $H_0$? What is hypothesis $H_1$?
+```{r}
+# H0: The distribution of CFUs is the same in the treatment and control groups.
+# H1: The distribution of CFUs is different in the treatment and control groups.
+# In numbers, assuming normality:
+# H0: mean(CFUstreatment) = mean(CFUscontrol)
+# H1: mean(CFUstreatment) != mean(CFUscontrol)
+```
+
+
+
+
+\subsection{Performing the Statistical Test?}
+Assume that we have $Y_{ij} \sim N(\mu_i,\sigma^2)$ where i denotes treatment group and j denotes sample. $\mu_i$ is the mean CFU for group $i$, and  $\sigma^2$ is the unknown variance. We want to test whether $\mu_i = \mu_j$.
+\subsubsection{(5 points)} What statistical test would you utilize to compare these two groups? 
+```{r}
+# I would use an independent samples (unpaired) t-test. This test compares two normal distributions that are unpaired.
+```
+
+
+
+
+\subsubsection{(5 points)} What exactly is being tested when you use the test from your previous answer? Specifically, write this by relating $H_0$ and $H_1$ to the assumptions made in this subsection. 
+```{r}
+# As stated in the problem, the distribution is normal.
+# H0: The mean number of CFUs is the same in the treatment and control groups.
+# H1: The mean number of CFUs is different in the treatment and control groups.
+# In numbers:
+# H0: mean(CFUstreatment) = mean(CFUscontrol)
+# H1: mean(CFUstreatment) != mean(CFUscontrol)
+
+# In particular the unpaired two-sample t-test evaluates whether the means of two normal distributions are different considering the variability around the means given by their standard deviations.
+```
+
+
+
+
+\subsubsection{(5 points)} 
+Write the formula of the test statistic that you would use. 
+
+For unequal variances
+$$t =  \dfrac{\bar{x_1} - \bar{x_2}}{\sqrt{\dfrac{s_1^2}{n_1} + \dfrac{s_2^2}{n_2}}}$$
+For equal variances
+
+$$t =  \dfrac{\bar{x_1} - \bar{x_2}}{s * \sqrt{\dfrac{1}{n_1} + \dfrac{1}{n_2}}}$$
+Where s is
+$$s =  \sqrt{\dfrac{(n_1 - 1) * s_1^2 - (n_2 - 1) * s_2^2}{n_1 + n_2 - 2}}$$
+
+
+
+
+\subsubsection{(5 points)}
+State why you would not want to use this test on this data if the assumptions are not true.
+```{r}
+# The samples are very small. The treatment group is of size 9 and the control group is of size 8. With such a small sample size if the distributions are actually not normally distributed, the assumptions under which the t-test relies may not hold. With small numbers even the central limit theorem may not hold. 
+```
+
+
+
+
+\section{3. More Group Comparisons (35 Points Total)}
+For this problem, you are considering the same experimental results as the last problem. However, assume that the data being observed is not normally distributed. Further, note that the sample size is not large enough to treat it as asymptotically normal.
+\subsection{(5 points)}
+Propose a test to compare the same two groups. Is this test the same test utilized in 3.2? If this test is not the same test, then state what the differences are between the two tests in terms of what they are assuming. 
+```{r}
+# One of the potential tests to be used is the non-parametric variant of the unpaired t-test: Wilcoxon rank-sum test also known as Mann-Whitney U test that is used when variances are equal. Another option is a permutation test. These tests are not the same as in 2.2 because we cannot assume normality per problem 3. 
+# The t-test assummes normal distributions. For large sample sizes, the t-test is robust from departures from normality. It can assume both equal or unequal variances.
+# The permutation test does not assume normal distribution and does not assume any particular variance or variances.
+# These tests assume independent observations.
+```
+
+
+
+
+\subsection{(5 points)}
+If we are determining significance via observation of the permutation distribution of a test statistic $T = \bar{Y}_1-\bar{Y}_2$ (in terms of notation, $\bar{A}$ means the mean of $A$), please answer: What assumptions are you making about your data in relation to your hypotheses? What assumptions are you making about the distribution of your data?
+```{r}
+# One of the potential tests to be used is the non-parametric variant of the unpaired t-test: Wilcoxon rank-sum test also known as Mann-Whitney U test that is used when variances are equal. Another option is a permutation test. These tests are not the same as in 2.2 because we cannot assume normality per problem 3. 
+# The t-test assummes normal distributions. For large sample sizes, the t-test is robust from departures from normality. It can assume both equal or unequal variances.
+# The permutation test does not assume normal distribution and does not assume any particular variance or variances.
+# The permutation test assumes independent observations and exchangeability, that is, the assignment of one observation does not influence the assignment of other observations.
+# In the permutation test there are no other assumptions (like normality) on the distribution of the data.
+```
+
+
+
+
+\subsection{(20 points)}
+In R, generate a p-value for this test by calculating the permutation distribution of the test statistic $T = \bar{Y}_1-\bar{Y}_2$. First, write a function that implements the test statistic (do not use packages such as exactRankTest or coin). What is the total number of permutations possible? Computing the test statistic for all of the permutations can be time consuming when there are a large number. Thus, generate a set of 1000 unique permutations of the data. Finally, plot the permutation distribution and add a vertical line representing the observed test statistic in addition to reporting the p-value. 
+```{r}
+# The difference between the mean of the two distributions is
+# mean control - mean treatment
+mean(c(1, 30, 45, 20, 12, 20, 32, 40)) - mean(c(10, 12, 8, 16, 22, 4, 7, 2, 9))
+25 - 10
+# 15
+# But this difference may be a manifestation of a chance distribution
+
+# Permuting the values help understand the scope of variation when the values of the CFUs are completely independent of the treatment assignment 
+
+# Create the data with the real assignments
+treatmentgroup = rep(c("T", "C"), c(9, 8))
+data = c(10, 12, 8, 16, 22, 4, 7, 2, 9, 1, 30, 45, 20, 12, 20, 32, 40)
+names(data) = treatmentgroup
+data
+
+# The function to calculate the difference in means between the group labelled as T and the group labelled as C would be
+Teststatistic <- function(x){
+  mean(data[-x]) - mean(data[x])
+} 
+
+
+# The total number of permutations is the number of ways to assign 9 treatment (T) and 8 control (C) labels to 17 CFUs.
+length(combn(1:17, 9, simplify = FALSE))
+length(combn(1:17, 8, simplify = FALSE))
+dim(combn(1:17, 9))
+dim(combn(1:17, 8))
+# 24310 total number of permutations and this is independent of whether we choose 9 for treatment (the unchosen labels would be controls) or 8 for the controls (the rest would be treated)
+# First 10 rows of labels assignments for treatment
+combn(1:17, 9, simplify = FALSE)[1:10]
+# First 10 rows of labels assignments for control
+combn(1:17, 8, simplify = FALSE)[1:10]
+
+# In summary, 24310 permutations possible
+
+## Generate a set of 1000 unique permutations of the data
+# Label assignment for treatment
+assignmentT <- combn(1:17, 9, simplify = TRUE)[ , 1:1000]
+
+# Implement the function
+variabilitywithpermutation = apply(assignmentT, 2, Teststatistic)
+
+# Plot the distribution
+hist(variabilitywithpermutation, breaks = 50)
+abline(v = 15)
+
+# Calculate how many of the values are above the observed test statistic
+above <- variabilitywithpermutation[variabilitywithpermutation > 15]
+# One sided p-value
+length(above) / length(variabilitywithpermutation)
+# Two-sided p-value
+(length(above) / length(variabilitywithpermutation)) * 2
+
+# ANSWER
+# 24310 permutations possible
+# 0.025 or 2.5% of the distribution is above the observed test statistic, which is an empirical one-sided p-value for the null hypothesis. The 2 sided p-value (assuming simmetry) would be 0.025 * 2 or 0.05 or 5%.
+# So, two-sided p-value = 0.05
+```
+
+
+
+
+\subsection{(5 points)}
+What are your conclusions? Can we reject the null hypothesis?
+```{r}
+# With a conventional two-sided alpha level of 0.05, we cannot reject the null hypothesis because the p-value is not smaller than 0.05. Therefore, with the available data we cannot reject that the mean number of CFUs is the same in the treatment and control groups.
+```
+
+
+
+
+
+
+
+
+\section{4. Thinking About The Data (10 Points Total)}
+\subsection{(5 points)}
+State another test statistic that gives the same result as the one utilized in 3.3.2. (hint: the formula for this test statistic does not consider $\bar{Y}_2$). Explain why this is the case. 
+```{r}
+# In theory, the unpaired two-sample t test should give the same result
+t.test(c(1, 30, 45, 20, 12, 20, 32, 40), c(10, 12, 8, 16, 22, 4, 7, 2, 9), alternative = "two.sided", paired = FALSE, conf.level = 0.95)
+# However the p-value here is p-value = 0.02397
+# The p-value here is smaller than 0.05
+
+# In theory the one-sample t test versus the mean of the controls should give the same result
+t.test(c(10, 12, 8, 16, 22, 4, 7, 2, 9), mu = 25, alternative = "two.sided", paired = FALSE, conf.level = 0.95)
+# However the p-value here is p-value = 7.819e-05
+# The p-value here is smaller than 0.05
+
+# Therefore other options are a non-parametric test like Wilcoxon rank sum test
+wilcox.test(c(1, 30, 45, 20, 12, 20, 32, 40), c(10, 12, 8, 16, 22, 4, 7, 2, 9), alternative = "two.sided", paired = FALSE, conf.level = 0.95)
+# However the p-value here is p-value = 0.03404
+# The p-value here is smaller than 0.05
+# The Wilcoxon test does not assume a normal distribution and therefore yields a p-value that is closer to the one found in the permutation test
+
+# or a Bayesian method
+```
+
+
+
+
+\subsection{(5 points)}
+Explain why the central limit theorem/law of large numbers can play a role in determining what statistical test we use for group comparisons. 
+```{r}
+# The central limit theorem states that when numbers are large, the distribution of means of most distributions tend to have a normal distribution. When numbers are small like in this case, the assumptions of tests like the t-test are not met and these tests yield results that are far away from tests with minimal assumptions like the permutation test. Therefore, when numbers are small (typically less than 20-30 per group) parametric tests are better not used and other options like non-parametric tests, permutation tests, or Bayesian methods should be considered. 
+```
+
+
+
+
+\section{5. Proportion Tests (10 Points Total)}
+You have gotten peer reviews back from your mouse xenograft work combining your new cancer therapeutic and radiation. The reviewer asks you to consider only the new drug without radiation and look at survival at the end of one month (i.e. comparing mice that did and did not receive the drug). You proceed to conduct follow up experiments. In 134 mice (with xenografts) that did not recieve the drug, 25 were alive after a month. In 80 mice (with xenografts) that did receive the drug, 34 were alive after a month. Can the differences in survival rates in the follow up experiments be attributed to chance?
+```{r}
+# The distribution is binomial because there are only 2 possible outcomes: survival at one month or not survival at one month
+
+# Treatment
+34 / 80
+# 0.425 survived
+
+# Control
+25 / 134
+# 0.1865672 survived
+
+# Create the 2x2 table
+treatment <- c(34, 80 - 34)
+control <- c(25, 134 - 25)
+tablemice <- data.frame(treatment, control)
+row.names(tablemice) <- c("alive", "dead")
+tablemice 
+
+## There are several tests to compare proportions
+
+# prop.test
+prop.test(x = c(25, 34), n = c(134, 80), alternative = "two.sided", conf.level = 0.95, correct = TRUE)
+# p-value = 0.0002965
+
+# As there are at least 5 observations per cell, we can use the chi-square test
+chisq.test(tablemice)
+# p-value = 0.0002965
+
+# We can also use Fisher's exact test
+fisher.test(tablemice, alternative = "two.sided", conf.level = 0.95)
+# p-value = 0.000246
+
+# As the p-value is smaller than 0.05, we reject the null hypothesis that the proportion of surviving months at 1 month is the same between treatment and control mice and conclude that the survival is different (in particular, the survival in the treatment group was higher approximately 43% than in the control group approximately 19%). This difference cannot be attributed to chance with the data presented in the problem. 
+```
+
+
+
+
+
+
+
+
+\section{6. Time spent? (1 Point)}
+How long did you spend working on this problem set?
+```{r}
+# 10 hours
+```
+
+
+
+
+
+
+
+
+\section{7. Extra Credit | \textit{Challenging} (5 Points)}
+Note: This question is intended to let you challenge yourself beyond the course material explicitly covered. We will not spend time addressing the extra credit on piazza or in office hours until after the problem set is due. 
+
+Your lab has developed a new therapy and are testing it in patients recovering from surgery. You are blinded as to which group received treatment and which received a placebo. 
+
+Two groups of patients have the following recovery times in days from surgery: 
+
+group 1: 15,20,21,26,28
+
+group 2: 23,26,34,39
+
+Can we reject the null hypothesis of no difference in recovery times between the two groups in favor of a two-sided alternative hypothesis at the 0.05 level using a two-sided permutation test?
+Subsequently, find a 95\% 2-sided confidence interval for this (hint: you will need to create a range of datasets and perform many tests). Is it possible to obtain 1-sided p values from the datasets generated to obtain the confidence interval? If so, report the 99\% 1-sided upper bound. 
+```{r}
+# The difference between the mean of the two distributions is
+# mean group 2 - mean group 1
+mean(c(23, 26, 34, 39)) - mean(c(15, 20, 21, 26, 28))
+30.5 - 22
+# 8.5
+# But this difference may be a manifestation of a chance distribution
+
+# Permuting the values help understand the scope of variation when the values of the recovery times are completely independent of the treatment assignment 
+
+# Create the data with the real assignments
+groups = rep(c("G1", "G2"), c(5, 4))
+data2 = c(15, 20, 21, 26, 28, 23, 26, 34, 39)
+names(data2) = groups
+data2
+
+# The function to calculate the difference in means between the group labelled as G1 and the group labelled as G2 would be
+Teststatistic2 <- function(x){
+  mean(data2[-x]) - mean(data2[x])
+} 
+
+
+# The total number of permutations is the number of ways to assign 5 group 1 (G1) and 4 group 2 (G2) labels to 9 recovery times.
+length(combn(1:9, 5, simplify = FALSE))
+length(combn(1:9, 4, simplify = FALSE))
+dim(combn(1:9, 5))
+dim(combn(1:9, 4))
+# 126 total number of permutations and this is independent of whether we choose 5 for G1 (the unchosen labels would be G2) or 4 for G2 (the rest would be G1)
+# First 10 rows of labels assignments for G1
+combn(1:9, 5, simplify = FALSE)[1:10]
+# First 10 rows of labels assignments for G2
+combn(1:9, 4, simplify = FALSE)[1:10]
+
+# In summary, 126 permutations possible
+
+## Generate a set of 126 unique permutations of the data
+# Label assignment for treatment
+assignmentG1 <- combn(1:9, 5, simplify = TRUE)
+
+# Implement the function
+variabilitywithpermutationG = apply(assignmentG1, 2, Teststatistic2)
+
+# Plot the distribution
+hist(variabilitywithpermutationG, breaks = 50)
+abline(v = 8.5)
+
+# Calculate how many of the values are above the observed test statistic
+aboveG <- variabilitywithpermutationG[variabilitywithpermutationG > 8.5]
+# One sided p-value
+length(aboveG) / length(variabilitywithpermutationG)
+# Two-sided p-value
+(length(aboveG) / length(variabilitywithpermutationG)) * 2
+
+# ANSWER
+# 126 permutations possible
+# 0.03174603 or 3.2% of the distribution is above the observed test statistic, which is an empirical one-sided p-value for the null hypothesis. The 2 sided p-value would be 0.03174603 * 2 or 0.06349206 or 6.4%.
+# So, two-sided p-value > 0.05.
+# Based on these data, we cannot reject the null hypothesis of no difference in recovery times between the two groups G1 and G2.
+
+
+
+## CONFIDENCE INTERVALS
+# I am going to bootstrap (sample with replacement) my dataset to create many (1000) different datasets
+
+# Original datasets
+G1 <- c(15, 20, 21, 26, 28)
+G2 <- c(23, 26, 34, 39)
+
+# Create an empty vector to save the bootstrapped p-values
+pvaluesonesided <- vector()
+
+# Loop
+for (i in 1 : 1000) {
+  
+  # Create bootstraped versions of the groups
+  bootstrappedG1 <- sample(G1, size = 5, replace = TRUE)
+  bootstrappedG2 <- sample(G2, size = 4, replace = TRUE)
+  
+  # Calculate difference of the means 
+  # mean group 2 - mean group 1
+  diff <- mean(bootstrappedG2) - mean(bootstrappedG1)
+  
+  # Create the data with the real assignments
+  groups = rep(c("G1", "G2"), c(5, 4))
+  data3 = c(bootstrappedG1, bootstrappedG2)
+  names(data3) = groups
+  data3
+  
+  # The function to calculate the difference in means between the group labelled as G1 and the group labelled as G2 would be
+  Teststatistic3 <- function(x){
+    mean(data3[-x]) - mean(data3[x])
+  } 
+  
+  # Label assignment for treatment
+  assignmentG1bootstrapped <- combn(1:9, 5, simplify = TRUE)
+
+  # Implement the function
+  variabilitywithpermutationbootstrapped = apply(assignmentG1bootstrapped, 2, Teststatistic3)
+  
+  # Plot the distribution (not needed for the calculation but makes the .html file beautiful)
+  hist(variabilitywithpermutationbootstrapped, breaks = 50)
+  abline(v = diff)
+  
+  # Calculate how many of the values are above (if diff positive, most cases) or below (if diff negative) the observed test statistic. Let's call it abovebootstrapped even if diff is negative
+  if (diff >= 0) {
+    abovebootstrapped <- variabilitywithpermutationbootstrapped[variabilitywithpermutationbootstrapped > diff]
+  } else {
+    abovebootstrapped <- variabilitywithpermutationbootstrapped[variabilitywithpermutationbootstrapped < diff]
+  }
+  
+  # One sided p-value
+  onesided = length(abovebootstrapped) / length(variabilitywithpermutationbootstrapped)
+  onesided
+  
+  # Add p-value to the existing vector
+  pvaluesonesided <- c(pvaluesonesided, onesided)
+}
+
+# The 2-sided p-values (assuming simmetry) would be
+pvaluestwosided <- pvaluesonesided * 2
+
+# The 95% two-sided confidence interval is 
+# from
+quantile(pvaluestwosided, probs = 0.05) 
+# to 
+quantile(pvaluestwosided, probs = 0.95)
+
+# The 99% one-sided upper bound is 
+quantile(pvaluesonesided, probs = 0.99) 
+```
+
+
